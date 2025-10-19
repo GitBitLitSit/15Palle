@@ -149,7 +149,9 @@ export default function ContactPage() {
                       variant="outline"
                       className="w-full h-11 bg-transparent border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
                     >
-                      View on Map
+                      <a href="https://www.google.com/maps/place/Billardclub+%2215+Palle%22/@46.4738883,11.3221534,822m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47829c48eb419955:0x61657b0814acdd84!8m2!3d46.4738883!4d11.3247337!16s%2Fg%2F11cn945qnv?entry=ttu&g_ep=EgoyMDI1MTAxNC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">
+                        View on Map
+                      </a>
                     </Button>
                   </CardContent>
                 </Card>
