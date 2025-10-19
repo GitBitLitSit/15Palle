@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation"
 import { Search, CheckCircle, XCircle, Eye, LogOut, Users, UserCheck, UserX, Download } from "lucide-react"
 import type { Customer } from "@/lib/mock-api"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 function DashboardContent() {
   const router = useRouter()
@@ -44,6 +45,7 @@ function DashboardContent() {
   }>({ open: false, action: null, customerId: null })
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [notes, setNotes] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     loadCustomers()
@@ -53,10 +55,34 @@ function DashboardContent() {
     filterCustomers()
   }, [searchQuery, activeTab, allCustomers])
 
-  const loadCustomers = () => {
+  const loadCustomers = async () => {
     const result = customers.list({ pageSize: 100 })
-    setAllCustomers(result.data)
+    setIsLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const { data, error} = await supabase
+      .from('users')
+      .select("*")
+      .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      setAllCustomers(result.data.concat(data as Customer[]))
+    } catch (err: unknown) {
+      console.error(err);
+      toast({
+        title: "Failed to load customers",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      })
+      setAllCustomers(result.data)
+    } finally {
+      setIsLoading(false)
+    }
   }
+
 
   const filterCustomers = () => {
     let filtered = allCustomers
@@ -156,6 +182,10 @@ function DashboardContent() {
   }
 
   const handleExportCSV = () => {
+    if (filteredCustomers.length === 0) {
+      toast({ title: "Nothing to export", description: "No rows match your filters." });
+      return;
+    }
     const csvData = filteredCustomers.map((c) => ({
       Name: c.name,
       Email: c.email,
@@ -212,7 +242,7 @@ function DashboardContent() {
               <h1 className="mb-2 text-3xl font-bold">Owner Dashboard</h1>
               <p className="text-muted-foreground">Manage customer verifications</p>
             </div>
-            <Button variant="outline" onClick={handleSignOut}>
+            <Button variant="outline" onClick={handleSignOut} disabled={isLoading}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </Button>
@@ -301,7 +331,9 @@ function DashboardContent() {
                 </TabsList>
 
                 <TabsContent value={activeTab} className="space-y-4">
-                  {filteredCustomers.length === 0 ? (
+                  {isLoading ? (
+                    <div className="py-12 text-center text-muted-foreground">Loading customers…</div>
+                    ) : filteredCustomers.length === 0 ? (
                     <div className="py-12 text-center">
                       <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                       <p className="text-muted-foreground">No customers found</p>
@@ -425,7 +457,7 @@ function DashboardContent() {
                 <SheetDescription>View and manage customer information</SheetDescription>
               </SheetHeader>
 
-              <div className="mt-6 space-y-6">
+              <div className="mt-6 space-y-6 px-4">
                 <div className="space-y-4">
                   <div className="rounded-lg border border-border bg-muted/50 p-4 px-4">
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</Label>
