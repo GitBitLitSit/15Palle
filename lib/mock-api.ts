@@ -86,8 +86,96 @@ function initializeStorage() {
   }
 }
 
+// Verification code storage and generation
+interface VerificationCode {
+  email: string
+  code: string
+  expiresAt: number
+}
+
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
 // Auth API
 export const auth = {
+  sendVerificationCode: async (email: string): Promise<{ code: string; message: string }> => {
+    initializeStorage()
+
+    const customers = JSON.parse(localStorage.getItem("customers") || "[]") as Customer[]
+    const customer = customers.find((c) => c.email === email)
+
+    if (!customer) {
+      throw new Error("Email not found. Please register first.")
+    }
+
+    // Generate 6-digit code
+    const code = generateVerificationCode()
+    const expiresAt = Date.now() + 10 * 60 * 1000 // 10 minutes
+
+    const verificationData: VerificationCode = {
+      email,
+      code,
+      expiresAt,
+    }
+
+    localStorage.setItem("verificationCode", JSON.stringify(verificationData))
+
+    // In a real app, send email here
+    console.log(`[v0] Verification code for ${email}: ${code}`)
+
+    return {
+      code, // Return code for demo purposes
+      message: "Verification code sent to your email",
+    }
+  },
+
+  verifyCode: async (email: string, code: string): Promise<AuthUser> => {
+    initializeStorage()
+
+    const storedData = localStorage.getItem("verificationCode")
+    if (!storedData) {
+      throw new Error("No verification code found. Please request a new code.")
+    }
+
+    const verificationData: VerificationCode = JSON.parse(storedData)
+
+    // Check if code matches and hasn't expired
+    if (verificationData.email !== email) {
+      throw new Error("Invalid verification code")
+    }
+
+    if (verificationData.code !== code) {
+      throw new Error("Invalid verification code")
+    }
+
+    if (Date.now() > verificationData.expiresAt) {
+      localStorage.removeItem("verificationCode")
+      throw new Error("Verification code has expired. Please request a new code.")
+    }
+
+    // Get customer data
+    const customers = JSON.parse(localStorage.getItem("customers") || "[]") as Customer[]
+    const customer = customers.find((c) => c.email === email)
+
+    if (!customer) {
+      throw new Error("Customer not found")
+    }
+
+    // Clear verification code
+    localStorage.removeItem("verificationCode")
+
+    const authUser: AuthUser = {
+      id: customer.id,
+      email: customer.email,
+      role: "customer",
+      name: customer.name,
+    }
+
+    localStorage.setItem("authUser", JSON.stringify(authUser))
+    return authUser
+  },
+
   loginCustomer: async (email: string, password: string): Promise<AuthUser> => {
     initializeStorage()
     // Simple validation - in real app, check against database
@@ -247,5 +335,41 @@ export const customers = {
     customer.notes = notes
     localStorage.setItem("customers", JSON.stringify(customers))
     return customer
+  },
+
+  create: (data: {
+    name: string
+    email: string
+    phone?: string
+    notes?: string
+  }): Customer => {
+    initializeStorage()
+
+    const customers = JSON.parse(localStorage.getItem("customers") || "[]") as Customer[]
+
+    // Check if email already exists
+    if (customers.find((c) => c.email === data.email)) {
+      throw new Error("A customer with this email already exists")
+    }
+
+    // Generate new customer ID
+    const maxId = customers.reduce((max, c) => {
+      const num = Number.parseInt(c.id.split("-")[1])
+      return num > max ? num : max
+    }, 0)
+
+    const newCustomer: Customer = {
+      id: `cust-${String(maxId + 1).padStart(3, "0")}`,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      createdAt: new Date().toISOString(),
+      verified: false,
+      notes: data.notes,
+    }
+
+    customers.push(newCustomer)
+    localStorage.setItem("customers", JSON.stringify(customers))
+    return newCustomer
   },
 }

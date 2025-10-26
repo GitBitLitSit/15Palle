@@ -24,10 +24,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { customers, auth } from "@/lib/mock-api"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, CheckCircle, XCircle, Eye, LogOut, Users, UserCheck, UserX, Download } from "lucide-react"
+import {
+  Search,
+  CheckCircle,
+  XCircle,
+  Eye,
+  LogOut,
+  Users,
+  UserCheck,
+  UserX,
+  Download,
+  Printer,
+  UserPlus,
+} from "lucide-react"
 import type { Customer } from "@/lib/mock-api"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
 
 function DashboardContent() {
   const router = useRouter()
@@ -45,7 +56,13 @@ function DashboardContent() {
   }>({ open: false, action: null, customerId: null })
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [notes, setNotes] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [createUserOpen, setCreateUserOpen] = useState(false)
+  const [newUserForm, setNewUserForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    notes: "",
+  })
 
   useEffect(() => {
     loadCustomers()
@@ -55,34 +72,10 @@ function DashboardContent() {
     filterCustomers()
   }, [searchQuery, activeTab, allCustomers])
 
-  const loadCustomers = async () => {
+  const loadCustomers = () => {
     const result = customers.list({ pageSize: 100 })
-    setIsLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      const { data, error} = await supabase
-      .from('users')
-      .select("*")
-      .order("created_at", { ascending: false })
-
-      if (error) throw error
-
-      setAllCustomers(result.data.concat(data as Customer[]))
-    } catch (err: unknown) {
-      console.error(err);
-      toast({
-        title: "Failed to load customers",
-        description: err instanceof Error ? err.message : "Unknown error",
-        variant: "destructive",
-      })
-      setAllCustomers(result.data)
-    } finally {
-      setIsLoading(false)
-    }
+    setAllCustomers(result.data)
   }
-
 
   const filterCustomers = () => {
     let filtered = allCustomers
@@ -182,10 +175,6 @@ function DashboardContent() {
   }
 
   const handleExportCSV = () => {
-    if (filteredCustomers.length === 0) {
-      toast({ title: "Nothing to export", description: "No rows match your filters." });
-      return;
-    }
     const csvData = filteredCustomers.map((c) => ({
       Name: c.name,
       Email: c.email,
@@ -216,6 +205,36 @@ function DashboardContent() {
     })
   }
 
+  const handleCreateUser = () => {
+    try {
+      if (!newUserForm.name || !newUserForm.email) {
+        toast({
+          title: "Validation error",
+          description: "Name and email are required",
+          variant: "destructive",
+        })
+        return
+      }
+
+      customers.create(newUserForm)
+
+      toast({
+        title: "Customer created",
+        description: "New customer has been added successfully.",
+      })
+
+      setCreateUserOpen(false)
+      setNewUserForm({ name: "", email: "", phone: "", notes: "" })
+      loadCustomers()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create customer",
+        variant: "destructive",
+      })
+    }
+  }
+
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredCustomers.length) {
       setSelectedIds([])
@@ -231,6 +250,163 @@ function DashboardContent() {
   const verifiedCount = allCustomers.filter((c) => c.verified).length
   const unverifiedCount = allCustomers.filter((c) => !c.verified).length
 
+  const handlePrintQR = (customer: Customer) => {
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+      JSON.stringify({
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        verified: customer.verified,
+      }),
+    )}`
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>QR Code - ${customer.name}</title>
+          <style>
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              padding: 20px;
+              background: white;
+            }
+            .container {
+              text-align: center;
+              max-width: 400px;
+            }
+            .logo {
+              margin-bottom: 20px;
+            }
+            .logo img {
+              width: 150px;
+              height: auto;
+            }
+            h1 {
+              color: #2f699f;
+              margin: 0 0 10px 0;
+              font-size: 24px;
+            }
+            .subtitle {
+              color: #666;
+              margin: 0 0 30px 0;
+              font-size: 14px;
+            }
+            .qr-code {
+              margin: 30px 0;
+              padding: 20px;
+              background: white;
+              border: 2px solid #2f699f;
+              border-radius: 12px;
+              display: inline-block;
+            }
+            .qr-code img {
+              display: block;
+              width: 300px;
+              height: 300px;
+            }
+            .customer-info {
+              margin-top: 30px;
+              padding: 20px;
+              background: #f5f5f5;
+              border-radius: 8px;
+              text-align: left;
+            }
+            .info-row {
+              margin: 10px 0;
+              font-size: 14px;
+            }
+            .info-label {
+              font-weight: 600;
+              color: #2f699f;
+              display: inline-block;
+              width: 100px;
+            }
+            .info-value {
+              color: #333;
+            }
+            .verified-badge {
+              display: inline-block;
+              background: #10b981;
+              color: white;
+              padding: 4px 12px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: 600;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .container {
+                page-break-inside: avoid;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="logo">
+              <img src="/logo.png" alt="15 Palle Logo" />
+            </div>
+            <h1>15 Palle</h1>
+            <p class="subtitle">Associazione Sportiva</p>
+            
+            <div class="qr-code">
+              <img src="${qrCodeUrl}" alt="QR Code" />
+            </div>
+            
+            <div class="customer-info">
+              <div class="info-row">
+                <span class="info-label">Name:</span>
+                <span class="info-value">${customer.name}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Email:</span>
+                <span class="info-value">${customer.email}</span>
+              </div>
+              ${
+                customer.phone
+                  ? `
+              <div class="info-row">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">${customer.phone}</span>
+              </div>
+              `
+                  : ""
+              }
+              <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="verified-badge">✓ Verified Member</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Member ID:</span>
+                <span class="info-value">${customer.id}</span>
+              </div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navigation />
@@ -242,7 +418,7 @@ function DashboardContent() {
               <h1 className="mb-2 text-3xl font-bold">Owner Dashboard</h1>
               <p className="text-muted-foreground">Manage customer verifications</p>
             </div>
-            <Button variant="outline" onClick={handleSignOut} disabled={isLoading}>
+            <Button variant="outline" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </Button>
@@ -290,12 +466,24 @@ function DashboardContent() {
                   <CardDescription>View and manage customer verifications</CardDescription>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button onClick={() => setCreateUserOpen(true)} size="sm" className="w-full sm:w-auto">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Create User
+                  </Button>
                   {selectedIds.length > 0 && activeTab === "unverified" && (
                     <Button onClick={handleBulkVerify} size="sm" className="w-full sm:w-auto">
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Verify Selected ({selectedIds.length})
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto bg-transparent"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Import CSV
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -331,9 +519,7 @@ function DashboardContent() {
                 </TabsList>
 
                 <TabsContent value={activeTab} className="space-y-4">
-                  {isLoading ? (
-                    <div className="py-12 text-center text-muted-foreground">Loading customers…</div>
-                    ) : filteredCustomers.length === 0 ? (
+                  {filteredCustomers.length === 0 ? (
                     <div className="py-12 text-center">
                       <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                       <p className="text-muted-foreground">No customers found</p>
@@ -399,6 +585,11 @@ function DashboardContent() {
                                   <Button variant="ghost" size="sm" onClick={() => handleViewProfile(customer)}>
                                     <Eye className="h-4 w-4" />
                                   </Button>
+                                  {customer.verified && (
+                                    <Button variant="ghost" size="sm" onClick={() => handlePrintQR(customer)}>
+                                      <Printer className="h-4 w-4 text-primary" />
+                                    </Button>
+                                  )}
                                   {customer.verified ? (
                                     <Button variant="ghost" size="sm" onClick={() => handleRevoke(customer.id)}>
                                       <XCircle className="h-4 w-4 text-destructive" />
@@ -424,6 +615,75 @@ function DashboardContent() {
       </main>
 
       <Footer />
+
+      {/* Create User Dialog */}
+      <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Create New Customer
+            </DialogTitle>
+            <DialogDescription>
+              Add a new customer to the system. They will need to be verified before gaining full access.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-name">
+                Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="create-name"
+                placeholder="John Doe"
+                value={newUserForm.name}
+                onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-email">
+                Email <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="create-email"
+                type="email"
+                placeholder="john.doe@example.com"
+                value={newUserForm.email}
+                onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-phone">Phone</Label>
+              <Input
+                id="create-phone"
+                type="tel"
+                placeholder="+39 06 1234 5678"
+                value={newUserForm.phone}
+                onChange={(e) => setNewUserForm({ ...newUserForm, phone: e.target.value })}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-notes">Notes</Label>
+              <Textarea
+                id="create-notes"
+                placeholder="Add any notes about this customer..."
+                value={newUserForm.notes}
+                onChange={(e) => setNewUserForm({ ...newUserForm, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateUserOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser}>Create Customer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog
@@ -457,7 +717,7 @@ function DashboardContent() {
                 <SheetDescription>View and manage customer information</SheetDescription>
               </SheetHeader>
 
-              <div className="mt-6 space-y-6 px-4">
+              <div className="mt-6 space-y-6">
                 <div className="space-y-4">
                   <div className="rounded-lg border border-border bg-muted/50 p-4 px-4">
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</Label>
