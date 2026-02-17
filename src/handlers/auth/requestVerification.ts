@@ -16,11 +16,11 @@ const parseDate = (value?: Date | string | null): Date | null => {
 };
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-    const SAFE_RESPONSE = messageResponse(event, 200, "IF_ACCOUNT_EXISTS");
-
     try {
-        let { email } = JSON.parse(event.body || "{}");
-        const trimmedEmail = email?.trim() ?? "";
+        const SAFE_RESPONSE = messageResponse(event, 200, "IF_ACCOUNT_EXISTS");
+        const payload = JSON.parse(event.body || "{}");
+        const rawEmail = typeof payload.email === "string" ? payload.email : "";
+        const trimmedEmail = rawEmail.trim().toLowerCase();
 
         if (!trimmedEmail) {
             return errorResponse(event, 400, "EMAIL_REQUIRED");
@@ -97,12 +97,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             await verificationCollection.insertOne(verificationPayload);
         }
 
-        await sendVerificationEmail(
+        const emailResult = await sendVerificationEmail(
             process.env.SES_SENDER_EMAIL!,
             trimmedEmail,
             verificationCode,
             member.firstName
         );
+
+        if (!emailResult.success) {
+            // Keep a privacy-safe response while still surfacing operational issues in logs.
+            console.error("Verification email was not sent:", emailResult.error);
+        }
 
         return SAFE_RESPONSE;
 
