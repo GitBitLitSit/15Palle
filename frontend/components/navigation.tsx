@@ -25,17 +25,24 @@ export function Navigation() {
     const token = localStorage.getItem("token")
     const sessionMember = sessionStorage.getItem("currentMember")
     const legacyMember = localStorage.getItem("currentMember")
+    const sessionMemberToken = sessionStorage.getItem("memberSessionToken")
+    const legacyMemberToken = localStorage.getItem("memberSessionToken")
     const memberData = sessionMember ?? legacyMember
+    const memberToken = sessionMemberToken ?? legacyMemberToken
 
     if (!sessionMember && legacyMember) {
       sessionStorage.setItem("currentMember", legacyMember)
       localStorage.removeItem("currentMember")
     }
+    if (!sessionMemberToken && legacyMemberToken) {
+      sessionStorage.setItem("memberSessionToken", legacyMemberToken)
+      localStorage.removeItem("memberSessionToken")
+    }
 
     if (token) {
       setIsLoggedIn(true)
       setUserType("owner")
-    } else if (memberData) {
+    } else if (memberData && memberToken) {
       setIsLoggedIn(true)
       setUserType("customer")
     } else {
@@ -62,6 +69,8 @@ export function Navigation() {
     localStorage.removeItem("token")
     sessionStorage.removeItem("currentMember")
     localStorage.removeItem("currentMember")
+    sessionStorage.removeItem("memberSessionToken")
+    localStorage.removeItem("memberSessionToken")
     setIsLoggedIn(false)
     setUserType(null)
     router.push("/")

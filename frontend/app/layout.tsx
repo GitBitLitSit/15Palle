@@ -14,10 +14,67 @@ const geistMono = Geist_Mono({
   preload: false,
 })
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://15palle.com"
+
 export const metadata: Metadata = {
-  title: "15 Palle - Billiard Club & Bar",
-  description: "Premier billiard club and bar in Rome. Professional tables, great atmosphere, and welcoming community.",
-  generator: "v0.app",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "15 Palle - Billiard Club & Bar",
+    template: "%s | 15 Palle",
+  },
+  description:
+    "Billiard Club 15 Palle a Bolzano: biliardo professionale, bar, eventi e community per appassionati.",
+  applicationName: "15 Palle",
+  alternates: {
+    canonical: "/",
+  },
+  keywords: [
+    "15 Palle",
+    "Billiard Club Bolzano",
+    "Biliardo Bolzano",
+    "Billiard Club & Bar",
+    "Sala biliardo Alto Adige",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "it_IT",
+    url: siteUrl,
+    siteName: "15 Palle",
+    title: "15 Palle - Billiard Club & Bar",
+    description:
+      "Il tuo club di biliardo e bar a Bolzano. Tavoli professionali, ambiente accogliente e community.",
+    images: [
+      {
+        url: "/tableUpscale.webp",
+        width: 1200,
+        height: 630,
+        alt: "Interno del Billiard Club 15 Palle",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "15 Palle - Billiard Club & Bar",
+    description: "Billiard Club a Bolzano con tavoli professionali, bar ed eventi.",
+    images: ["/tableUpscale.webp"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  icons: {
+    icon: [{ url: "/icon", type: "image/png" }],
+    shortcut: ["/icon"],
+    apple: [{ url: "/apple-icon", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
 }
 
 export default function RootLayout({
