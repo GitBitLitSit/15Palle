@@ -71,7 +71,7 @@ export default function CustomerProfilePage() {
     }
 
     const expiresAt = getTokenExpiryMs(memberSessionToken)
-    if (!expiresAt || expiresAt <= Date.now()) {
+    if (typeof expiresAt === "number" && expiresAt <= Date.now()) {
       clearAndRedirectToLogin()
       return
     }
@@ -86,9 +86,12 @@ export default function CustomerProfilePage() {
     }
 
     setMember(parsedMember)
-    expiryTimeoutId = window.setTimeout(() => {
-      clearAndRedirectToLogin()
-    }, Math.max(0, expiresAt - Date.now()))
+    // If token expiry cannot be decoded client-side, rely on backend auth checks instead of forcing logout.
+    if (typeof expiresAt === "number") {
+      expiryTimeoutId = window.setTimeout(() => {
+        clearAndRedirectToLogin()
+      }, Math.max(0, expiresAt - Date.now()))
+    }
 
     const syncMemberProfile = async () => {
       try {

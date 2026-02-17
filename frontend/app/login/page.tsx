@@ -13,6 +13,16 @@ import { useRouter } from "next/navigation"
 import { LogIn, Mail, ShieldCheck } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import Image from "next/image"
+import type { Member } from "@/lib/types"
+
+type RecoverResponse = {
+  member?: Member
+  memberSessionToken?: string
+  data?: {
+    member?: Member
+    memberSessionToken?: string
+  }
+}
 
 export default function LoginPage() {
   const { t } = useTranslation()
@@ -30,15 +40,17 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    const normalizedEmail = customerEmail.trim().toLowerCase()
 
-    if (!customerEmail || !customerEmail.includes("@")) {
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       setError(t("login.validationEmail"))
       setIsLoading(false)
       return
     }
 
     try {
-      const result = await requestVerificationCode(customerEmail)
+      const result = await requestVerificationCode(normalizedEmail)
+      setCustomerEmail(normalizedEmail)
 
       // If backend returns code for display mode
       if (result.verificationCode) {
@@ -66,21 +78,27 @@ export default function LoginPage() {
 
     try {
       const result = await verifyAndRecover({
-        email: customerEmail,
+        email: customerEmail.trim().toLowerCase(),
         verificationCode,
         deliveryMethod: "display",
       })
-      // Store member data in sessionStorage
-      if (result.member) {
-        sessionStorage.setItem("currentMember", JSON.stringify(result.member))
-        localStorage.removeItem("currentMember")
-      }
-      if (result.memberSessionToken) {
-        sessionStorage.setItem("memberSessionToken", result.memberSessionToken)
-        localStorage.removeItem("memberSessionToken")
+      const rootPayload = result as RecoverResponse
+      const nestedPayload =
+        rootPayload?.data && typeof rootPayload.data === "object" ? rootPayload.data : undefined
+      const recoveredMember = nestedPayload?.member ?? rootPayload.member
+      const recoveredToken = nestedPayload?.memberSessionToken ?? rootPayload.memberSessionToken
+
+      if (!recoveredMember || !recoveredToken) {
+        throw new Error(t("login.invalidCode"))
       }
 
-      router.push("/customer/profile")
+      // Store member data in sessionStorage
+      sessionStorage.setItem("currentMember", JSON.stringify(recoveredMember))
+      localStorage.removeItem("currentMember")
+      sessionStorage.setItem("memberSessionToken", recoveredToken)
+      localStorage.removeItem("memberSessionToken")
+
+      router.replace("/customer/profile")
     } catch (err) {
       setError(err instanceof Error ? err.message : t("login.invalidCode"))
     } finally {
