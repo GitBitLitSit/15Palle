@@ -106,7 +106,11 @@ export default function CustomerProfilePage() {
         localStorage.removeItem("currentMember")
       } catch (error) {
         if (isUnauthorizedError(error)) {
-          clearAndRedirectToLogin()
+          // Only hard-logout for a definitively invalid/expired member token.
+          // Some runtimes can return NO_TOKEN_PROVIDED due header normalization quirks.
+          if (error.code === "INVALID_TOKEN") {
+            clearAndRedirectToLogin()
+          }
           return
         }
         console.error("Failed to refresh member profile", error)
