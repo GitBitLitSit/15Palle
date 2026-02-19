@@ -6,15 +6,25 @@ import { AppError } from "../../lib/appError";
 import { errorResponse, json } from "../../lib/http";
 import { verifyMemberSessionToken } from "../../lib/memberSession";
 
+function getAuthorizationHeader(event: { headers?: Record<string, string | undefined> }): string | undefined {
+  const headers = event.headers || {};
+  for (const [headerName, headerValue] of Object.entries(headers)) {
+    if (headerName.toLowerCase() === "authorization") {
+      return headerValue;
+    }
+  }
+  return undefined;
+}
+
 function getBearerToken(authorizationHeader?: string): string | null {
   if (!authorizationHeader) return null;
-  const [scheme, token] = authorizationHeader.split(" ");
-  if (scheme?.toLowerCase() !== "bearer" || !token) return null;
-  return token.trim();
+  const match = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match?.[1]) return null;
+  return match[1].trim();
 }
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const token = getBearerToken(event.headers.authorization);
+  const token = getBearerToken(getAuthorizationHeader(event));
   if (!token) {
     return errorResponse(event, 401, "NO_TOKEN_PROVIDED");
   }
