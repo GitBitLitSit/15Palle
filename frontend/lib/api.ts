@@ -182,7 +182,8 @@ export async function getMemberProfile(memberSessionToken: string) {
     method: "GET",
     headers: {
       "Accept-Language": getApiLanguage(),
-      Authorization: `Bearer ${memberSessionToken}`,
+      // Use lowercase header key to support runtimes that only expose lowercase names.
+      authorization: `Bearer ${memberSessionToken}`,
     },
   })
   return handleResponse(res)
