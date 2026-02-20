@@ -15,9 +15,9 @@ export const metadata: Metadata = {
   description: "Premier billiard club and bar in Rome. Professional tables, great atmosphere, and welcoming community.",
   generator: "v0.app",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
   },
 }
 
