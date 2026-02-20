@@ -64,10 +64,11 @@ export default function AdminLoginPage() {
               <div className="grid gap-0 lg:grid-cols-[1.1fr_1fr]">
                 <div className="relative hidden lg:block">
                   <Image
-                    src="/lounge.jpg"
+                    src="/lounge.webp"
                     alt="Billiard lounge"
                     fill
                     sizes="(min-width: 1024px) 55vw, 0vw"
+                    quality={72}
                     className="object-cover"
                     priority
                   />
@@ -76,10 +77,11 @@ export default function AdminLoginPage() {
                     <div className="flex items-center gap-3">
                       <div className="rounded-full border border-white/20 bg-white/10 p-1">
                         <Image
-                          src="/logo.png"
+                          src="/logo.webp"
                           alt="15 Palle"
                           width={44}
                           height={44}
+                          sizes="44px"
                           className="h-11 w-11 rounded-full object-cover"
                         />
                       </div>

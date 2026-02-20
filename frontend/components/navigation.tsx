@@ -103,10 +103,11 @@ export function Navigation() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <Image
-                src="/logo.png"
+                src="/logo.webp"
                 alt="15 Palle Logo"
                 width={60}
                 height={60}
+                sizes="56px"
                 className="h-14 w-14 rounded-full object-cover transition-transform group-hover:scale-105"
               />
             </div>

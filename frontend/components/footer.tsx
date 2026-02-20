@@ -19,10 +19,11 @@ export function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <Image
-                src="/logo.png"
+                src="/logo.webp"
                 alt="15 Palle"
                 width={40}
                 height={40}
+                sizes="40px"
                 className="h-10 w-10 rounded-full object-cover"
               />
               <span className="text-xl font-bold text-foreground">
