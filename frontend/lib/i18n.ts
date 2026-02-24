@@ -389,7 +389,6 @@ const resources = {
           warnings: {
             invalidQr: "Accesso negato: QR non valido / membro non trovato.",
             memberBlocked: "Accesso negato: il membro è bloccato.",
-            passback: "Ultima scansione {{minutes}} minuti fa.",
           },
         },
         dialogs: {
@@ -484,7 +483,6 @@ const resources = {
           creating: "Creazione nuovi membri",
         },
         realtime: {
-          passbackWarning: "⚠️ Avviso passback",
           accessDenied: "⛔ Accesso negato",
           newCheckin: "✓ Nuovo check-in",
           memberCheckedIn: "{{firstName}} {{lastName}} ha effettuato il check-in",
@@ -906,7 +904,6 @@ const resources = {
           warnings: {
             invalidQr: "Access denied: invalid QR / member not found.",
             memberBlocked: "Access denied: member is blocked.",
-            passback: "Last scan was {{minutes}} minutes ago.",
           },
         },
         dialogs: {
@@ -1001,7 +998,6 @@ const resources = {
           creating: "Creating new members",
         },
         realtime: {
-          passbackWarning: "⚠️ Passback Warning",
           accessDenied: "⛔ Access denied",
           newCheckin: "✓ New Check-in",
           memberCheckedIn: "{{firstName}} {{lastName}} checked in",
@@ -1423,7 +1419,6 @@ const resources = {
           warnings: {
             invalidQr: "Zugriff verweigert: Ungültiger QR / Mitglied nicht gefunden.",
             memberBlocked: "Zugriff verweigert: Mitglied ist gesperrt.",
-            passback: "Letzter Scan war vor {{minutes}} Minuten.",
           },
         },
         dialogs: {
@@ -1518,7 +1513,6 @@ const resources = {
           creating: "Neue Mitglieder werden erstellt",
         },
         realtime: {
-          passbackWarning: "⚠️ Passback-Warnung",
           accessDenied: "⛔ Zugriff verweigert",
           newCheckin: "✓ Neuer Check-in",
           memberCheckedIn: "{{firstName}} {{lastName}} hat eingecheckt",

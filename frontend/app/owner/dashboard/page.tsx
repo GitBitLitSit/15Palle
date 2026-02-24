@@ -72,21 +72,11 @@ function getTokenExpiryMs(token: string): number | null {
   return null
 }
 
-type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED" | "PASSBACK_WARNING"
-
-// Match "X minutes ago" in EN / "X minuti fa" in IT / "vor X Minuten" in DE (stored warning may be in any locale)
-const PASSBACK_WARNING_REGEX_EN = /last scan was\s+(\d+)\s+minutes?\s+ago\.?/i
-const PASSBACK_WARNING_REGEX_IT = /ultima scansione\s+(\d+)\s+minuti\s+fa\.?/i
-const PASSBACK_WARNING_REGEX_DE = /letzter scan war vor\s+(\d+)\s+minuten\.?/i
-const PASSBACK_MINUTES_REGEXES = [
-  PASSBACK_WARNING_REGEX_EN,
-  PASSBACK_WARNING_REGEX_IT,
-  PASSBACK_WARNING_REGEX_DE,
-]
+type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED"
 
 function resolveWarningCode(checkIn: CheckInEvent): CheckInWarningCode | null {
   const explicitCode = (checkIn.warningCode || "").toUpperCase()
-  if (explicitCode === "INVALID_QR" || explicitCode === "MEMBER_BLOCKED" || explicitCode === "PASSBACK_WARNING") {
+  if (explicitCode === "INVALID_QR" || explicitCode === "MEMBER_BLOCKED") {
     return explicitCode
   }
 
@@ -98,37 +88,6 @@ function resolveWarningCode(checkIn: CheckInEvent): CheckInWarningCode | null {
   }
   if (warningText.includes("member is blocked") || warningText.includes("member blocked")) {
     return "MEMBER_BLOCKED"
-  }
-  if (PASSBACK_MINUTES_REGEXES.some((re) => re.test(warningText))) {
-    return "PASSBACK_WARNING"
-  }
-  return null
-}
-
-function resolveWarningMinutes(checkIn: CheckInEvent): number | null {
-  const minutesFromParams =
-    checkIn.warningParams && typeof checkIn.warningParams === "object"
-      ? (checkIn.warningParams as { minutes?: unknown }).minutes
-      : undefined
-
-  if (typeof minutesFromParams === "number" && Number.isFinite(minutesFromParams)) {
-    return Math.max(1, Math.round(minutesFromParams))
-  }
-
-  if (typeof minutesFromParams === "string") {
-    const parsed = Number(minutesFromParams)
-    if (Number.isFinite(parsed)) {
-      return Math.max(1, Math.round(parsed))
-    }
-  }
-
-  const warningText = checkIn.warning || ""
-  for (const re of PASSBACK_MINUTES_REGEXES) {
-    const match = warningText.match(re)
-    if (match?.[1]) {
-      const parsed = Number(match[1])
-      if (Number.isFinite(parsed)) return Math.max(1, Math.round(parsed))
-    }
   }
   return null
 }
@@ -301,9 +260,7 @@ export default function OwnerDashboard() {
       if (warningCode === "MEMBER_BLOCKED") {
         return t("dashboard.checkins.warnings.memberBlocked")
       }
-
-      const minutes = resolveWarningMinutes(checkIn) ?? 1
-      return t("dashboard.checkins.warnings.passback", { minutes })
+      return null
     },
     [t],
   )
@@ -383,7 +340,6 @@ export default function OwnerDashboard() {
     const warningCode = resolveWarningCode(event)
     const localizedWarning = getLocalizedWarningMessage(event)
     const isAccessDenied = warningCode === "INVALID_QR" || warningCode === "MEMBER_BLOCKED"
-    const isPassbackWarning = warningCode === "PASSBACK_WARNING"
 
     if (isAccessDenied) {
       playFeedbackSound("negative")
@@ -407,20 +363,16 @@ export default function OwnerDashboard() {
         : t("dashboard.checkins.unknownMember")
       const description = isAccessDenied
         ? (localizedWarning || t("dashboard.checkins.warnings.invalidQr"))
-        : isPassbackWarning
-          ? `${memberName} - ${localizedWarning || ""}`.trim()
-          : t("dashboard.realtime.memberCheckedIn", {
-              firstName: event.member?.firstName || t("dashboard.checkins.unknownMember"),
-              lastName: event.member?.lastName || "",
-            })
+        : t("dashboard.realtime.memberCheckedIn", {
+            firstName: event.member?.firstName || t("dashboard.checkins.unknownMember"),
+            lastName: event.member?.lastName || "",
+          })
       toast({
         title: isAccessDenied
           ? t("dashboard.realtime.accessDenied")
-          : isPassbackWarning
-            ? t("dashboard.realtime.passbackWarning")
-            : t("dashboard.realtime.newCheckin"),
+          : t("dashboard.realtime.newCheckin"),
         description,
-        variant: isAccessDenied || isPassbackWarning ? "destructive" : "default",
+        variant: isAccessDenied ? "destructive" : "default",
       })
     }
   }, [getLocalizedWarningMessage, playFeedbackSound, t, toast])

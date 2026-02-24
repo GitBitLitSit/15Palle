@@ -49,7 +49,6 @@ const resources = {
       warnings: {
         INVALID_QR: "Accesso negato: QR non valido / membro non trovato.",
         MEMBER_BLOCKED: "Accesso negato: il membro è bloccato.",
-        PASSBACK_WARNING: "Ultima scansione {{minutes}} minuti fa.",
       },
     },
   },
@@ -98,7 +97,6 @@ const resources = {
       warnings: {
         INVALID_QR: "Access denied: invalid QR / member not found.",
         MEMBER_BLOCKED: "Access denied: member is blocked.",
-        PASSBACK_WARNING: "Last scan was {{minutes}} minutes ago.",
       },
     },
   },
@@ -147,7 +145,6 @@ const resources = {
       warnings: {
         INVALID_QR: "Zugriff verweigert: Ungültiger QR / Mitglied nicht gefunden.",
         MEMBER_BLOCKED: "Zugriff verweigert: Mitglied ist gesperrt.",
-        PASSBACK_WARNING: "Letzter Scan war vor {{minutes}} Minuten.",
       },
     },
   },

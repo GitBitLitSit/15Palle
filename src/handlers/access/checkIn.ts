@@ -8,7 +8,7 @@ import { AppError } from "../../lib/appError";
 import { errorResponse, getRequestLanguage, messageResponse } from "../../lib/http";
 import { t } from "../../lib/i18n";
 
-type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED" | "PASSBACK_WARNING";
+type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED";
 
 async function recordAndBroadcast(
     checkinsCollection: Collection<CheckIn>,
@@ -128,42 +128,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             return errorResponse(event, 403, "MEMBER_BLOCKED", undefined, { success: false });
         }
 
-        const lastCheckin = await checkinsCollection.findOne(
-            { memberId: member._id },
-            { sort: { checkInTime: -1 } }
-        );
-
-        const COOLDOWN_MINUTES = 5;
-        let warning: string | null = null;
-        let warningCode: CheckInWarningCode | null = null;
-        let warningParams: Record<string, unknown> | undefined;
-
-        if (lastCheckin) {
-            const diffMs = now.getTime() - new Date(lastCheckin.checkInTime).getTime();
-            const diffMinutes = diffMs / 1000 / 60;
-
-            if (diffMinutes < COOLDOWN_MINUTES) {
-                const roundedMinutes = Math.max(1, Math.ceil(diffMinutes));
-                warningCode = "PASSBACK_WARNING";
-                warningParams = { minutes: roundedMinutes };
-                warning = t(requestLanguage, `warnings.${warningCode}`, warningParams);
-            }
-        }
-
         await recordAndBroadcast(checkinsCollection, now, {
             memberId: new ObjectId(member._id),
             source: authSource,
-            warning: warning,
-            warningCode,
-            warningParams,
+            warning: null,
             broadcastMember: { ...member, _id: member._id }
         });
 
         return messageResponse(event, 200, "ACCESS_GRANTED", undefined, {
             success: true,
-            warning: warning,
-            warningCode,
-            warningParams,
             member: {
                 firstName: member.firstName,
                 lastName: member.lastName,
