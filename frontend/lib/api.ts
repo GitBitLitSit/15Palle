@@ -196,7 +196,9 @@ async function handleResponse(res: Response) {
       errorData.messageText ||
       errorData.message ||
       (errorData.error ? i18n.t(`errors.${String(errorData.error)}`, errorData.params || {}) : null)
-    throw new Error(localized || errorData.error || `HTTP Error: ${res.status}`)
+    const err = new Error(localized || errorData.error || `HTTP Error: ${res.status}`) as Error & { status?: number }
+    err.status = res.status
+    throw err
   }
 
   return res.json()

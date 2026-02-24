@@ -132,10 +132,20 @@ function resolveCheckInDate(checkIn: CheckInEvent): Date | null {
   return parsed
 }
 
+function isUnauthorized(error: unknown): boolean {
+  const err = error as Error & { status?: number }
+  return err?.status === 401
+}
+
 export default function OwnerDashboard() {
   const router = useRouter()
   const { toast } = useToast()
   const { t, i18n } = useTranslation()
+
+  const redirectToOwnerLogin = useCallback(() => {
+    localStorage.removeItem("token")
+    router.replace("/admin")
+  }, [router])
 
   // Auth check + token expiry redirect
   useEffect(() => {
@@ -149,20 +159,20 @@ export default function OwnerDashboard() {
     const expiresAt = getTokenExpiryMs(token)
     if (!expiresAt) {
       localStorage.removeItem("token")
-      router.replace("/")
+      router.replace("/admin")
       return
     }
 
     const now = Date.now()
     if (expiresAt <= now) {
       localStorage.removeItem("token")
-      router.replace("/")
+      router.replace("/admin")
       return
     }
 
     const timeoutId = window.setTimeout(() => {
       localStorage.removeItem("token")
-      router.replace("/")
+      router.replace("/admin")
     }, expiresAt - now)
 
     return () => window.clearTimeout(timeoutId)
@@ -426,6 +436,10 @@ export default function OwnerDashboard() {
       })
 
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       console.error(error)
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedLoadMembers"), variant: "destructive" })
     } finally {
@@ -448,6 +462,10 @@ export default function OwnerDashboard() {
       setTotalCheckIns(result.pagination?.total || 0)
       setTotalCheckInsPages(result.pagination?.totalPages || 1)
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       console.error(error)
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedLoadCheckins"), variant: "destructive" })
     } finally {
@@ -486,8 +504,12 @@ export default function OwnerDashboard() {
       setMembersPage(1)
       loadMembers()
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       const errorMessage = error instanceof Error ? error.message : t("dashboard.toasts.failedCreateMember")
-      setCreateError(errorMessage) 
+      setCreateError(errorMessage)
     } finally {
       setIsCreating(false)
     }
@@ -523,6 +545,10 @@ export default function OwnerDashboard() {
       setEditDialogOpen(false)
       loadMembers()
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedUpdateMember"), variant: "destructive" })
     } finally {
       setIsUpdating(false)
@@ -545,6 +571,10 @@ export default function OwnerDashboard() {
       setMemberToDelete(null)
       loadMembers()
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedDeleteMember"), variant: "destructive" })
     } finally {
       setIsDeleting(false)
@@ -569,6 +599,10 @@ export default function OwnerDashboard() {
       setResetQrDialogOpen(false)
       setMemberToReset(null)
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedResetQr"), variant: "destructive" })
     } finally {
       setIsResettingQr(false)
@@ -652,6 +686,10 @@ export default function OwnerDashboard() {
         description: t("dashboard.toasts.importCompleteDesc", { created }),
       })
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       setImportError(t("dashboard.toasts.failedImport"))
       setImportStep("review")
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedImport"), variant: "destructive" })
@@ -748,6 +786,10 @@ export default function OwnerDashboard() {
       setImportPreviewPage(1)
       setImportStep("review")
     } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
       setImportError(t("dashboard.toasts.failedImport"))
       setImportStep("idle")
       toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedImport"), variant: "destructive" })
