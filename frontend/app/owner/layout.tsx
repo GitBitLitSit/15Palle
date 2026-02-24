@@ -3,6 +3,9 @@ import type { ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: "Owner Dashboard",
+  alternates: {
+    canonical: "/owner/dashboard",
+  },
   robots: {
     index: false,
     follow: false,

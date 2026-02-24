@@ -3,6 +3,9 @@ import type { ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: "Customer Area",
+  alternates: {
+    canonical: "/customer/profile",
+  },
   robots: {
     index: false,
     follow: false,

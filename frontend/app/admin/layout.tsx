@@ -3,6 +3,9 @@ import type { ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: "Admin Login",
+  alternates: {
+    canonical: "/admin",
+  },
   robots: {
     index: false,
     follow: false,
