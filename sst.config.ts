@@ -20,8 +20,29 @@ export default $config({
     const stageToken = $app.stage.replace(/[^a-zA-Z0-9-]/g, "-").slice(0, 24);
     const lambdaName = (base: string) =>
       $app.stage === "production" ? base : `${base}-${stageToken}`.slice(0, 64);
+    const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    const corsOrigins = Array.from(
+      new Set([
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://15palle.com",
+        "https://www.15palle.com",
+        ...configuredCorsOrigins,
+      ]),
+    );
 
-    const api = new sst.aws.ApiGatewayV2("Api");
+    const api = new sst.aws.ApiGatewayV2("Api", {
+      cors: {
+        allowOrigins: corsOrigins,
+        allowHeaders: ["Content-Type", "Authorization", "Accept-Language"],
+        allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      },
+    });
 
     api.route("POST /admin/login", {
       handler: "./src/handlers/admin/login.handler",
