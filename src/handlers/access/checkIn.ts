@@ -143,7 +143,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             const diffMinutes = diffMs / 1000 / 60;
 
             if (diffMinutes < COOLDOWN_MINUTES) {
-                const roundedMinutes = Math.max(1, Math.round(diffMinutes));
+                const roundedMinutes = Math.max(1, Math.ceil(diffMinutes));
                 warningCode = "PASSBACK_WARNING";
                 warningParams = { minutes: roundedMinutes };
                 warning = t(requestLanguage, `warnings.${warningCode}`, warningParams);

@@ -74,7 +74,15 @@ function getTokenExpiryMs(token: string): number | null {
 
 type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED" | "PASSBACK_WARNING"
 
-const PASSBACK_WARNING_REGEX = /last scan was\s+(\d+)\s+minutes?\s+ago\.?/i
+// Match "X minutes ago" in EN / "X minuti fa" in IT / "vor X Minuten" in DE (stored warning may be in any locale)
+const PASSBACK_WARNING_REGEX_EN = /last scan was\s+(\d+)\s+minutes?\s+ago\.?/i
+const PASSBACK_WARNING_REGEX_IT = /ultima scansione\s+(\d+)\s+minuti\s+fa\.?/i
+const PASSBACK_WARNING_REGEX_DE = /letzter scan war vor\s+(\d+)\s+minuten\.?/i
+const PASSBACK_MINUTES_REGEXES = [
+  PASSBACK_WARNING_REGEX_EN,
+  PASSBACK_WARNING_REGEX_IT,
+  PASSBACK_WARNING_REGEX_DE,
+]
 
 function resolveWarningCode(checkIn: CheckInEvent): CheckInWarningCode | null {
   const explicitCode = (checkIn.warningCode || "").toUpperCase()
@@ -91,7 +99,7 @@ function resolveWarningCode(checkIn: CheckInEvent): CheckInWarningCode | null {
   if (warningText.includes("member is blocked") || warningText.includes("member blocked")) {
     return "MEMBER_BLOCKED"
   }
-  if (PASSBACK_WARNING_REGEX.test(warningText)) {
+  if (PASSBACK_MINUTES_REGEXES.some((re) => re.test(warningText))) {
     return "PASSBACK_WARNING"
   }
   return null
@@ -115,12 +123,14 @@ function resolveWarningMinutes(checkIn: CheckInEvent): number | null {
   }
 
   const warningText = checkIn.warning || ""
-  const match = warningText.match(PASSBACK_WARNING_REGEX)
-  if (!match?.[1]) return null
-
-  const parsed = Number(match[1])
-  if (!Number.isFinite(parsed)) return null
-  return Math.max(1, Math.round(parsed))
+  for (const re of PASSBACK_MINUTES_REGEXES) {
+    const match = warningText.match(re)
+    if (match?.[1]) {
+      const parsed = Number(match[1])
+      if (Number.isFinite(parsed)) return Math.max(1, Math.round(parsed))
+    }
+  }
+  return null
 }
 
 function resolveCheckInDate(checkIn: CheckInEvent): Date | null {
