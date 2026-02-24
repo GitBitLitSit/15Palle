@@ -2,17 +2,47 @@
 
 export default $config({
   app(input) {
+    const awsProfile = process.env.PROFILE_AWS || process.env.AWS_PROFILE;
+
     return {
       name: "billiard-club",
       home: "aws",
       providers: {
-        aws: { region: "eu-west-1", profile: process.env.PROFILE_AWS },
+        aws: {
+          region: "eu-west-1",
+          ...(awsProfile ? { profile: awsProfile } : {}),
+        },
       },
     };
   },
 
   async run() {
-    const api = new sst.aws.ApiGatewayV2("Api");
+    const stageToken = $app.stage.replace(/[^a-zA-Z0-9-]/g, "-").slice(0, 24);
+    const lambdaName = (base: string) =>
+      $app.stage === "production" ? base : `${base}-${stageToken}`.slice(0, 64);
+    const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    const corsOrigins = Array.from(
+      new Set([
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://15palle.com",
+        "https://www.15palle.com",
+        ...configuredCorsOrigins,
+      ]),
+    );
+
+    const api = new sst.aws.ApiGatewayV2("Api", {
+      cors: {
+        allowOrigins: corsOrigins,
+        allowHeaders: ["Content-Type", "Authorization", "Accept-Language"],
+        allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      },
+    });
 
     api.route("POST /admin/login", {
       handler: "./src/handlers/admin/login.handler",
@@ -25,7 +55,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleAdminLoginFunction",
+      name: lambdaName("15PalleAdminLoginFunction"),
     });
 
     api.route("GET /members", {
@@ -37,7 +67,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleGetMembersFunction",
+      name: lambdaName("15PalleGetMembersFunction"),
     })
 
     api.route("POST /members", {
@@ -51,7 +81,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleCreateMemberFunction",
+      name: lambdaName("15PalleCreateMemberFunction"),
     });
 
     api.route("GET /members/export", {
@@ -63,7 +93,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleExportMembersFunction",
+      name: lambdaName("15PalleExportMembersFunction"),
     });
 
     api.route("POST /members/import", {
@@ -75,7 +105,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleImportMembersFunction",
+      name: lambdaName("15PalleImportMembersFunction"),
     });
 
     api.route("POST /members/import/batch", {
@@ -87,7 +117,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleImportMembersBatchFunction",
+      name: lambdaName("15PalleImportMembersBatchFunction"),
     });
 
     api.route("POST /check-existing-users", {
@@ -99,7 +129,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleCheckExistingUsersFunction",
+      name: lambdaName("15PalleCheckExistingUsersFunction"),
     });
 
     api.route("POST /bulk-create-users", {
@@ -113,7 +143,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleBulkCreateUsersFunction",
+      name: lambdaName("15PalleBulkCreateUsersFunction"),
     });
 
 
@@ -128,7 +158,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleUpdateMemberFunction",
+      name: lambdaName("15PalleUpdateMemberFunction"),
     })
 
     api.route("DELETE /members/{id}", {
@@ -140,7 +170,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleDeleteMemberFunction",
+      name: lambdaName("15PalleDeleteMemberFunction"),
     })
 
     api.route("POST /members/reset-qrcode", {
@@ -154,7 +184,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleResetMemberQrCodeFunction",
+      name: lambdaName("15PalleResetMemberQrCodeFunction"),
     });
 
     api.route("POST /members/recover", {
@@ -167,7 +197,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleRecoverMemberFunction",
+      name: lambdaName("15PalleRecoverMemberFunction"),
     });
 
     api.route("GET /auth/check-ins", {
@@ -179,7 +209,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleGetCheckInsFunction",
+      name: lambdaName("15PalleGetCheckInsFunction"),
     });
 
     api.route("POST /auth/request-verification", {
@@ -192,7 +222,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleRequestVerificationFunction",
+      name: lambdaName("15PalleRequestVerificationFunction"),
     })
 
     const webSocket = new sst.aws.ApiGatewayWebSocket("RealtimeApi");
@@ -205,7 +235,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleWebSocketConnectFunction",
+      name: lambdaName("15PalleWebSocketConnectFunction"),
     });
 
     webSocket.route("$disconnect", {
@@ -216,7 +246,7 @@ export default $config({
       },
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleWebSocketDisconnectFunction",
+      name: lambdaName("15PalleWebSocketDisconnectFunction"),
     });
 
     api.route("POST /check-in", {
@@ -236,21 +266,21 @@ export default $config({
       ],
       architecture: "arm64",
       runtime: "nodejs22.x",
-      name: "15PalleCheckInFunction",
+      name: lambdaName("15PalleCheckInFunction"),
     })
     
-    /*const site = new sst.aws.Nextjs("MyWeb", {
+    const site = new sst.aws.Nextjs("MyWeb", {
       path: "frontend",
       environment: {
         NEXT_PUBLIC_API_URL: api.url,
         NEXT_PUBLIC_WEBSOCKET_API_URL: webSocket.url,
       },
-    });*/
+    });
 
     return {
       api: api.url,
       websocket: webSocket.url,
-      //site: site.url,
+      site: site.url,
     };
   }
 });
