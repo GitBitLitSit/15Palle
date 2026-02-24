@@ -2,11 +2,16 @@
 
 export default $config({
   app(input) {
+    const awsProfile = process.env.PROFILE_AWS || process.env.AWS_PROFILE;
+
     return {
       name: "billiard-club",
       home: "aws",
       providers: {
-        aws: { region: "eu-west-1", profile: process.env.PROFILE_AWS },
+        aws: {
+          region: "eu-west-1",
+          ...(awsProfile ? { profile: awsProfile } : {}),
+        },
       },
     };
   },
