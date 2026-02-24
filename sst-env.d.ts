@@ -10,6 +10,10 @@ declare module "sst" {
       "type": "sst.aws.ApiGatewayV2"
       "url": string
     }
+    "MyWeb": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
     "RealtimeApi": {
       "managementEndpoint": string
       "type": "sst.aws.ApiGatewayWebSocket"
