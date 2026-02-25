@@ -16,11 +16,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://15palle.com"
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Circolo sportivo 15 Palle | 15palle.com | Biliardo Bolzano",
-    template: "%s | 15 Palle",
+    default: "Circolo sportivo 15 Palle",
+    template: "%s | Circolo sportivo 15 Palle",
   },
   description:
-    "15 Palle (15palle.com) – Il club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica, comunità accogliente. Via Bruno Buozzi 12. Aperto tutti i giorni.",
+    "Circolo sportivo 15 Palle (15palle.com) – Tavoli professionali, atmosfera unica, comunità accogliente. Via Bruno Buozzi 12. Aperto tutti i giorni.",
   keywords: [
     "15palle",
     "15 Palle",
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "it_IT",
     url: siteUrl,
-    siteName: "15 Palle - 15palle.com",
-    title: "Circolo sportivo 15 Palle | 15palle.com | Biliardo Bolzano",
+    siteName: "Circolo sportivo 15 Palle",
+    title: "Circolo sportivo 15 Palle",
     description:
       "15 Palle (15palle.com) – Club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica. Via Bruno Buozzi 12.",
     images: [
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Circolo sportivo 15 Palle | 15palle.com",
+    title: "Circolo sportivo 15 Palle",
     description: "15 Palle – Club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica.",
   },
   robots: {

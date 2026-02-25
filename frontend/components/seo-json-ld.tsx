@@ -9,8 +9,8 @@ export function SeoJsonLd() {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     "@id": `${siteUrl}/#organization`,
-    name: "15 Palle",
-    alternateName: ["15palle", "15palle.com", "15 Palle Billiard Club", "15 Palle Biliardo"],
+    name: "Circolo sportivo 15 Palle",
+    alternateName: ["15 Palle", "15palle", "15palle.com", "15 Palle Billiard Club", "15 Palle Biliardo"],
     url: siteUrl,
     description:
       "15 Palle è il tuo club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica e comunità accogliente. Aperto a tutti.",
