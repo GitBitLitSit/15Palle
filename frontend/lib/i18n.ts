@@ -92,9 +92,9 @@ const resources = {
             body:
               "Non vendiamo le tue informazioni personali. Possiamo condividere le tue informazioni solo nelle seguenti circostanze:",
             disclosure:
-              "Possiamo condividere le tue informazioni personali con fornitori di servizi fidati che ci assistono nella gestione del sito web e nello svolgimento della nostra attività, soggetti a rigorosi accordi di riservatezza. Utilizziamo AWS SES (Amazon Simple Email Service) per l'invio delle email, conforme agli standard di sicurezza e privacy di AWS.",
+              "Possiamo condividere le tue informazioni personali con fornitori di servizi fidati che ci assistono nella gestione del sito web e nello svolgimento della nostra attività, soggetti a rigorosi accordi di riservatezza. Utilizziamo Zeptomail per l'invio delle email, conforme a standard di sicurezza e privacy rigorosi.",
             items: [
-              "Con fornitori di servizi che svolgono servizi per nostro conto (incluso AWS SES per l'invio delle email)",
+              "Con fornitori di servizi che svolgono servizi per nostro conto (incluso Zeptomail per l'invio delle email)",
               "Quando richiesto dalla legge o per proteggere i nostri diritti",
               "In relazione a un trasferimento aziendale o a una fusione",
             ],
@@ -114,9 +114,9 @@ const resources = {
             title: "Sicurezza dei dati",
             body:
               "Implementiamo misure di sicurezza tecniche e organizzative adeguate per proteggere le tue informazioni personali da accessi non autorizzati, alterazioni, divulgazioni o distruzioni. Tuttavia, nessun metodo di trasmissione su Internet è sicuro al 100%.",
-            awsTitle: "Conformità AWS SES",
+            awsTitle: "Conformità Zeptomail",
             awsBody:
-              "Utilizziamo Amazon Simple Email Service (AWS SES) per inviare email di verifica e comunicazioni relative alla membership. AWS SES è conforme a rigorosi standard di sicurezza e privacy, tra cui SOC 1, SOC 2, ISO 27001 e PCI DSS. Le tue informazioni email sono protette secondo gli standard di sicurezza AWS.",
+              "Utilizziamo Zeptomail (Zoho Corporation) per inviare email di verifica e comunicazioni relative alla membership. Zeptomail è conforme a rigorosi standard di sicurezza e privacy e rispetta le normative sulla protezione dei dati (incluso il GDPR). Le tue informazioni email sono protette secondo gli standard di sicurezza del fornitore.",
           },
           rights: {
             title: "I tuoi diritti sulla privacy",
@@ -608,9 +608,9 @@ const resources = {
             body:
               "We do not sell your personal information. We may share your information only in the following circumstances:",
             disclosure:
-              "We may share your personal information with trusted service providers who assist us in operating our website and conducting our business, subject to strict confidentiality agreements. We use AWS SES (Amazon Simple Email Service) for email delivery, which is compliant with AWS security and privacy standards.",
+              "We may share your personal information with trusted service providers who assist us in operating our website and conducting our business, subject to strict confidentiality agreements. We use Zeptomail for email delivery, which meets rigorous security and privacy standards.",
             items: [
-              "With service providers who perform services on our behalf (including AWS SES for email delivery)",
+              "With service providers who perform services on our behalf (including Zeptomail for email delivery)",
               "When required by law or to protect our rights",
               "In connection with a business transfer or merger",
             ],
@@ -630,9 +630,9 @@ const resources = {
             title: "Data Security",
             body:
               "We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet is 100% secure.",
-            awsTitle: "AWS SES Compliance",
+            awsTitle: "Zeptomail Compliance",
             awsBody:
-              "We use Amazon Simple Email Service (AWS SES) to send verification emails and membership-related communications. AWS SES is compliant with rigorous security and privacy standards, including SOC 1, SOC 2, ISO 27001, and PCI DSS. Your email information is protected according to AWS security standards.",
+              "We use Zeptomail (Zoho Corporation) to send verification emails and membership-related communications. Zeptomail complies with rigorous security and privacy standards and adheres to data protection regulations (including GDPR). Your email information is protected according to the provider's security standards.",
           },
           rights: {
             title: "Your Privacy Rights",
@@ -1123,9 +1123,9 @@ const resources = {
             body:
               "Wir verkaufen Ihre personenbezogenen Daten nicht. Wir geben Ihre Informationen nur in den folgenden Fällen weiter:",
             disclosure:
-              "Wir können Ihre personenbezogenen Daten mit vertrauenswürdigen Dienstleistern teilen, die uns beim Betrieb unserer Website und unseres Geschäfts unterstützen, unter strengen Vertraulichkeitsvereinbarungen. Wir verwenden AWS SES (Amazon Simple Email Service) für den E-Mail-Versand, der den Sicherheits- und Datenschutzstandards von AWS entspricht.",
+              "Wir können Ihre personenbezogenen Daten mit vertrauenswürdigen Dienstleistern teilen, die uns beim Betrieb unserer Website und unseres Geschäfts unterstützen, unter strengen Vertraulichkeitsvereinbarungen. Wir verwenden Zeptomail für den E-Mail-Versand, der strenge Sicherheits- und Datenschutzstandards erfüllt.",
             items: [
-              "Mit Dienstleistern, die Leistungen in unserem Auftrag erbringen (einschließlich AWS SES für den E-Mail-Versand)",
+              "Mit Dienstleistern, die Leistungen in unserem Auftrag erbringen (einschließlich Zeptomail für den E-Mail-Versand)",
               "Wenn gesetzlich erforderlich oder zum Schutz unserer Rechte",
               "Im Zusammenhang mit einer Unternehmensübertragung oder Fusion",
             ],
@@ -1146,9 +1146,9 @@ const resources = {
             title: "Datensicherheit",
             body:
               "Wir implementieren angemessene technische und organisatorische Sicherheitsmaßnahmen, um Ihre personenbezogenen Daten vor unbefugtem Zugriff, Veränderung, Offenlegung oder Zerstörung zu schützen. Allerdings ist keine Methode der Übertragung über das Internet zu 100% sicher.",
-            awsTitle: "AWS SES Compliance",
+            awsTitle: "Zeptomail Compliance",
             awsBody:
-              "Wir verwenden Amazon Simple Email Service (AWS SES), um Verifizierungs-E-Mails und mitgliedschaftsbezogene Mitteilungen zu senden. AWS SES entspricht strengen Sicherheits- und Datenschutzstandards, darunter SOC 1, SOC 2, ISO 27001 und PCI DSS. Ihre E-Mail-Informationen werden gemäß den AWS-Sicherheitsstandards geschützt.",
+              "Wir verwenden Zeptomail (Zoho Corporation), um Verifizierungs-E-Mails und mitgliedschaftsbezogene Mitteilungen zu senden. Zeptomail entspricht strengen Sicherheits- und Datenschutzstandards und beachtet Datenschutzvorschriften (einschließlich DSGVO). Ihre E-Mail-Informationen werden gemäß den Sicherheitsstandards des Anbieters geschützt.",
           },
           rights: {
             title: "Ihre Datenschutzrechte",
