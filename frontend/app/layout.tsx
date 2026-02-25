@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     siteName: "Circolo sportivo 15 Palle",
     title: "Circolo sportivo 15 Palle",
     description:
-      "15 Palle (15palle.com) – Club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica. Via Bruno Buozzi 12.",
+      "Circolo sportivo 15 Palle (15palle.com) – Tavoli professionali, atmosfera unica. Via Bruno Buozzi 12.",
     images: [
       {
         url: "/logo.webp",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Circolo sportivo 15 Palle",
-    description: "15 Palle – Club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica.",
+    description: "Circolo sportivo 15 Palle (15palle.com) – Tavoli professionali, atmosfera unica.",
   },
   robots: {
     index: true,
