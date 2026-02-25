@@ -68,6 +68,9 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  verification: {
+    google: "FGnmR22jKRFLlfhsiRWbMRgVusHc7o3m2AUUkV3yFMU",
+  },
   icons: {
     icon: "/icon.png",
     shortcut: "/favicon.ico",
