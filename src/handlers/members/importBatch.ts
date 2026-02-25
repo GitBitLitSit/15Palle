@@ -2,8 +2,9 @@ import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { connectToMongo } from "../../adapters/database";
 import { verifyJWT } from "../../lib/jwt";
 import { AppError } from "../../lib/appError";
-import { errorResponse, json } from "../../lib/http";
+import { errorResponse, json, getClientIp } from "../../lib/http";
 import { Member } from "../../lib/types";
+import { auditLog } from "../../lib/auditLog";
 
 type ImportMemberRow = {
   firstName?: unknown;
@@ -45,7 +46,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   if (!token) return errorResponse(event, 401, "NO_TOKEN_PROVIDED");
 
   try {
-    verifyJWT(token);
+    const payload = verifyJWT(token) as { sub?: string };
+    const actor = payload?.sub;
 
     const parsed = JSON.parse(event.body || "{}");
     const rows = (parsed?.members ?? parsed) as unknown;
@@ -107,13 +109,28 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
 
     if (ops.length === 0) {
+      await auditLog({
+        at: new Date(),
+        action: "members_import",
+        actor,
+        ip: getClientIp(event),
+        details: { inserted: 0, accepted, invalid },
+      });
       return json(200, { success: true, inserted: 0, accepted, invalid });
     }
 
     const result = await collection.bulkWrite(ops, { ordered: false });
+    const inserted = result.upsertedCount ?? 0;
+    await auditLog({
+      at: new Date(),
+      action: "members_import",
+      actor,
+      ip: getClientIp(event),
+      details: { inserted, accepted, invalid },
+    });
     return json(200, {
       success: true,
-      inserted: result.upsertedCount ?? 0,
+      inserted,
       accepted,
       invalid,
     });

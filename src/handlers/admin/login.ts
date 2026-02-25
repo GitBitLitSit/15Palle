@@ -2,12 +2,16 @@ import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { generateJWT } from "../../lib/jwt";
 import { connectToMongo } from "../../adapters/database";
 import bcrypt from "bcryptjs";
-import { errorResponse, messageResponse } from "../../lib/http";
+import { errorResponse, messageResponse, getClientIp } from "../../lib/http";
+import { checkBodySize } from "../../lib/bodySize";
+import { auditLog } from "../../lib/auditLog";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-    const { username, password } = JSON.parse(event.body || "{}");
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
 
-    const ip = event.requestContext.http.sourceIp;
+    const { username, password } = JSON.parse(event.body || "{}");
+    const ip = getClientIp(event);
 
     if (!username || !password) {
         return errorResponse(event, 400, "MISSING_CREDENTIALS");
@@ -18,8 +22,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const failsCollection = db.collection("failed_logins");
 
     const ipRecord = await failsCollection.findOne({ ip });
-
-    console.log("IP Record:", ipRecord);
 
     if (ipRecord && ipRecord.lockUntil && ipRecord.lockUntil > new Date()) {
         const minutesLeft = Math.ceil((ipRecord.lockUntil.getTime() - new Date().getTime()) / 60000);
@@ -75,6 +77,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     );
 
     const token = generateJWT(username);
+    await auditLog({ at: new Date(), action: "admin_login", actor: username, ip });
 
     return messageResponse(event, 200, "LOGIN_SUCCESSFUL", undefined, { token });
 };

@@ -3,9 +3,10 @@ import { MongoBulkWriteError } from "mongodb";
 import { connectToMongo } from "../../adapters/database";
 import { verifyJWT } from "../../lib/jwt";
 import { AppError } from "../../lib/appError";
-import { errorResponse, json } from "../../lib/http";
+import { errorResponse, json, getClientIp } from "../../lib/http";
 import { Member } from "../../lib/types";
 import { parseCsv } from "../../lib/csv";
+import { auditLog } from "../../lib/auditLog";
 
 function normalizeHeader(h: string): string {
   return h.toLowerCase().trim().replace(/[\s_-]+/g, "");
@@ -33,7 +34,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   }
 
   try {
-    verifyJWT(token);
+    const payload = verifyJWT(token) as { sub?: string };
+    const actor = payload?.sub;
 
     if (!event.body) {
       return errorResponse(event, 400, "CSV_REQUIRED");
@@ -115,6 +117,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
 
     if (candidates.length === 0) {
+      await auditLog({
+        at: new Date(),
+        action: "members_import",
+        actor,
+        ip: getClientIp(event),
+        details: { inserted: 0, skippedInvalid, skippedDuplicateInFile },
+      });
       return json(200, {
         success: true,
         inserted: 0,
@@ -174,6 +183,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       }
     }
 
+    await auditLog({
+      at: new Date(),
+      action: "members_import",
+      actor,
+      ip: getClientIp(event),
+      details: { inserted, skippedExisting, skippedInvalid, skippedDuplicateInFile },
+    });
     return json(200, {
       success: true,
       inserted,

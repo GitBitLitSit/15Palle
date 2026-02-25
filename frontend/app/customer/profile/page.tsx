@@ -336,7 +336,7 @@ export default function CustomerProfilePage() {
     <div className="flex min-h-screen flex-col">
       <Navigation />
 
-      <main className="flex-1 py-16">
+      <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-5xl">
             <div className="mb-8 flex items-center justify-between">

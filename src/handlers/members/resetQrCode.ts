@@ -5,7 +5,9 @@ import { sendQrCodeEmail } from "../../adapters/email";
 import { Member } from "../../lib/types";
 import { ObjectId } from "mongodb";
 import { AppError } from "../../lib/appError";
-import { errorResponse, messageResponse } from "../../lib/http";
+import { errorResponse, messageResponse, getClientIp } from "../../lib/http";
+import { checkBodySize } from "../../lib/bodySize";
+import { auditLog } from "../../lib/auditLog";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const token = event.headers.authorization?.split(" ")[1];
@@ -14,8 +16,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         return errorResponse(event, 401, "NO_TOKEN_PROVIDED");
     }
 
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
+
     try {
-        verifyJWT(token);
+        const payload = verifyJWT(token) as { sub?: string };
+        const actor = payload?.sub;
 
         let { id } = JSON.parse(event.body || "{}");
         const trimmedId = id?.trim() ?? "";
@@ -64,6 +70,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             }
         }
 
+        await auditLog({
+            at: new Date(),
+            action: "member_reset_qr",
+            actor,
+            resourceType: "member",
+            resourceId: trimmedId,
+            ip: getClientIp(event),
+        });
         return messageResponse(event, 200, "QR_CODE_RESET_SUCCESS", undefined, {
             success: true,
             qrUuid: newQrUuid,
@@ -71,7 +85,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         });
 
     } catch (error) {
-        console.error("Reset QR Error:", error);
         if (error instanceof AppError && error.code === "INVALID_TOKEN") {
             return errorResponse(event, 401, "INVALID_TOKEN");
         }

@@ -5,6 +5,8 @@ import type { CheckInEvent } from "@/lib/types"
 
 type RealtimeErrorCode = "MISSING_WEBSOCKET_URL" | "CONNECTION_ERROR"
 
+const isDev = typeof process !== "undefined" && process.env.NODE_ENV === "development"
+
 export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
   const wsRef = useRef<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -14,18 +16,15 @@ export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
     const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_API_URL
 
     if (!wsUrl) {
-      console.error("[v0] WebSocket URL is not configured")
+      if (isDev) console.error("WebSocket URL is not configured")
       setError("MISSING_WEBSOCKET_URL")
       return
     }
-
-    console.log("[v0] Connecting to WebSocket:", wsUrl)
 
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
     ws.onopen = () => {
-      console.log("[v0] WebSocket connected")
       setIsConnected(true)
       setError(null)
     }
@@ -33,28 +32,23 @@ export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as CheckInEvent
-        console.log("[v0] Received check-in event:", data)
-
         if (data.type === "NEW_CHECKIN") {
           onCheckIn(data)
         }
-      } catch (err) {
-        console.error("[v0] Failed to parse WebSocket message:", err)
+      } catch {
+        if (isDev) console.error("Failed to parse WebSocket message")
       }
     }
 
-    ws.onerror = (error) => {
-      console.error("[v0] WebSocket error:", error)
+    ws.onerror = () => {
       setError("CONNECTION_ERROR")
     }
 
     ws.onclose = () => {
-      console.log("[v0] WebSocket disconnected")
       setIsConnected(false)
     }
 
     return () => {
-      console.log("[v0] Closing WebSocket connection")
       ws.close()
     }
   }, [onCheckIn])

@@ -2,9 +2,10 @@ import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { connectToMongoose } from "../../adapters/mongoose";
 import { sendQrCodeEmail } from "../../adapters/email";
 import { AppError } from "../../lib/appError";
-import { errorResponse, json } from "../../lib/http";
+import { errorResponse, json, getClientIp } from "../../lib/http";
 import { verifyJWT } from "../../lib/jwt";
 import { MemberModel } from "../../models/member";
+import { auditLog } from "../../lib/auditLog";
 
 type IncomingUser = {
   firstName?: unknown;
@@ -27,7 +28,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   }
 
   try {
-    verifyJWT(token);
+    const payload = verifyJWT(token) as { sub?: string };
+    const actor = payload?.sub;
 
     const parsed = JSON.parse(event.body || "{}");
     const rawUsers = Array.isArray(parsed) ? parsed : parsed?.users;
@@ -102,6 +104,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         });
       }
 
+      await auditLog({
+        at: new Date(),
+        action: "members_bulk_create",
+        actor,
+        ip: getClientIp(event),
+        details: { inserted: insertedDocs.length, invalid, emailSent, emailFailed },
+      });
       return json(200, { inserted: insertedDocs.length, invalid, emailSent, emailFailed });
     } catch (error) {
       const writeErrors = (error as { writeErrors?: Array<{ code?: number }> })?.writeErrors;

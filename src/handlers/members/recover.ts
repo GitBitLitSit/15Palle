@@ -4,9 +4,12 @@ import { Member, EmailVerification } from "../../lib/types";
 import { sendQrCodeEmail } from "../../adapters/email";
 import QRCode from "qrcode";
 import { errorResponse, messageResponse } from "../../lib/http";
-
+import { checkBodySize } from "../../lib/bodySize";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
+
     try {
         let { email, verificationCode, deliveryMethod } = JSON.parse(event.body || "{}");
 

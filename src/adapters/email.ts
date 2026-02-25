@@ -65,8 +65,8 @@ export const sendQrCodeEmail = async (
     });
 
     return { success: true, data: info };
-  } catch (error) {
-    return { success: false, error };
+  } catch {
+    return { success: false };
   }
 };
 
@@ -100,8 +100,7 @@ export const sendVerificationEmail = async (
 
         return { success: true, data: info };
 
-    } catch (error) {
-        console.error("Failed to send verification email:", error);
-        return { success: false, error };
+    } catch {
+        return { success: false };
     }
 };

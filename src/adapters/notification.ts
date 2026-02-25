@@ -18,11 +18,10 @@ export async function broadcastToDashboard(data: any) {
                 ConnectionId: conn.connectionId,
                 Data: message
             }));
-        } catch (error: any) {
-            if (error.statusCode = 410) {
+        } catch (err: unknown) {
+            const statusCode = err && typeof err === "object" && "statusCode" in err ? (err as { statusCode?: number }).statusCode : undefined;
+            if (statusCode === 410) {
                 await db.collection("connections").deleteOne({ connectionId: conn.connectionId });
-            } else {
-                console.error("WebSocket send error:", error);
             }
         }
     });

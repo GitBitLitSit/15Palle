@@ -2,10 +2,11 @@ import jwt from "jsonwebtoken";
 import { AppError } from "./appError";
 
 export const generateJWT = (userId: string) => {
+    const nowSec = Math.floor(Date.now() / 1000);
     const payload = {
         sub: userId,
-        iat: Date.now(),
-        exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+        iat: nowSec,
+        exp: nowSec + 3600, // 1 hour expiration
     };
 
     const secretKey = process.env.JWT_SECRET_KEY;

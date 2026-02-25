@@ -34,6 +34,8 @@ const resources = {
         CSV_INVALID: "Formato CSV non valido.",
         IMPORT_BATCH_REQUIRED: "Batch di import mancante o non valido.",
         IMPORT_BATCH_TOO_LARGE: "Batch troppo grande (max {{max}}).",
+        RATE_LIMIT_EXCEEDED: "Troppi tentativi. Riprova più tardi.",
+        REQUEST_BODY_TOO_LARGE: "La richiesta è troppo grande.",
       },
       messages: {
         IF_ACCOUNT_EXISTS: "Se l'account esiste, invieremo un codice di verifica.",
@@ -82,6 +84,8 @@ const resources = {
         CSV_INVALID: "Invalid CSV format.",
         IMPORT_BATCH_REQUIRED: "Missing or invalid import batch.",
         IMPORT_BATCH_TOO_LARGE: "Import batch too large (max {{max}}).",
+        RATE_LIMIT_EXCEEDED: "Too many requests. Try again later.",
+        REQUEST_BODY_TOO_LARGE: "Request body is too large.",
       },
       messages: {
         IF_ACCOUNT_EXISTS: "If the account exists, we will send a verification code.",
@@ -130,6 +134,8 @@ const resources = {
         CSV_INVALID: "Ungültiges CSV-Format.",
         IMPORT_BATCH_REQUIRED: "Import-Batch fehlt oder ist ungültig.",
         IMPORT_BATCH_TOO_LARGE: "Import-Batch ist zu groß (max {{max}}).",
+        RATE_LIMIT_EXCEEDED: "Zu viele Anfragen. Bitte später erneut versuchen.",
+        REQUEST_BODY_TOO_LARGE: "Anfragekörper ist zu groß.",
       },
       messages: {
         IF_ACCOUNT_EXISTS: "Wenn das Konto existiert, senden wir einen Bestätigungscode.",

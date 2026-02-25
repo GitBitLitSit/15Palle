@@ -4,8 +4,8 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { me } from "@/lib/mock-api"
-import type { UserRole } from "@/lib/mock-api"
+import { me } from "@/lib/auth"
+import type { UserRole } from "@/lib/auth"
 
 interface RequireRoleProps {
   role: UserRole

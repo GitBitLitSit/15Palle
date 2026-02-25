@@ -4,7 +4,8 @@ import { connectToMongo } from "../../adapters/database";
 import { Member } from "../../lib/types";
 import { ObjectId } from "mongodb";
 import { AppError } from "../../lib/appError";
-import { errorResponse, json } from "../../lib/http";
+import { errorResponse, json, getClientIp } from "../../lib/http";
+import { auditLog } from "../../lib/auditLog";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const token = event.headers.authorization?.split(" ")[1];
@@ -14,8 +15,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
 
     try {
-        verifyJWT(token);
-        
+        const payload = verifyJWT(token) as { sub?: string };
+        const actor = payload?.sub;
+
         const id = event.pathParameters?.id;
 
         if (!id) {
@@ -31,6 +33,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             return errorResponse(event, 404, "MEMBER_NOT_FOUND");
         }
 
+        await auditLog({
+            at: new Date(),
+            action: "member_delete",
+            actor,
+            resourceType: "member",
+            resourceId: id,
+            ip: getClientIp(event),
+        });
         return json(200, { success: true });
     } catch (error) {
         if (error instanceof AppError && error.code === "INVALID_TOKEN") {

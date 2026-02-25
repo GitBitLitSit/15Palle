@@ -3,9 +3,16 @@ import { Member, EmailVerification } from "../../lib/types";
 import { sendVerificationEmail } from "../../adapters/email";
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { errorResponse, messageResponse } from "../../lib/http";
+import { checkRateLimit } from "../../lib/rateLimit";
+import { checkBodySize } from "../../lib/bodySize";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const SAFE_RESPONSE = messageResponse(event, 200, "IF_ACCOUNT_EXISTS");
+
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
+    const rateLimitRes = await checkRateLimit(event, "auth:request-verification", { maxRequests: 10 });
+    if (rateLimitRes) return rateLimitRes;
 
     try {
         let { email } = JSON.parse(event.body || "{}");
@@ -56,7 +63,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         return SAFE_RESPONSE;
 
     } catch (error) {
-        console.error("Request Code Error:", error);
         return errorResponse(event, 500, "INTERNAL_SERVER_ERROR");
     }
 };

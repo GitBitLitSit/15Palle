@@ -16,20 +16,25 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         verifyJWT(token);
 
         const queryParams = event.queryStringParameters || {};
+        const MAX_SEARCH_LENGTH = 100;
+        const MAX_LIMIT = 100;
+        const DEFAULT_LIMIT = 20;
 
-        const search = queryParams.search?.trim() || "";
-        const page = parseInt(queryParams.page || "1");
-        const limit = parseInt(queryParams.limit || "20");
+        const rawSearch = queryParams.search?.trim() || "";
+        const search = rawSearch.slice(0, MAX_SEARCH_LENGTH);
+        const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
+        const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(queryParams.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
         const showBlockedOnly = queryParams.blocked === "true";
 
         const db = await connectToMongo();
         const collection = db.collection<Member>("members");
 
-        let dbQuery: any = {};
+        let dbQuery: Record<string, unknown> = {};
 
-        // Filter by text search
+        // Filter by text search (escape regex special chars to avoid ReDoS)
         if (search) {
-            const regex = new RegExp(search, "i"); // i case-insensitive
+            const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const regex = new RegExp(escaped, "i");
             dbQuery.$or = [
                 { firstName: regex },
                 { lastName: regex },

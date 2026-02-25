@@ -5,7 +5,9 @@ import { sendQrCodeEmail } from "../../adapters/email";
 import { MongoServerError } from "mongodb";
 import { Member } from "../../lib/types";
 import { AppError } from "../../lib/appError";
-import { errorResponse, messageResponse } from "../../lib/http";
+import { errorResponse, messageResponse, getClientIp } from "../../lib/http";
+import { checkBodySize } from "../../lib/bodySize";
+import { auditLog } from "../../lib/auditLog";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const token = event.headers.authorization?.split(" ")[1];
@@ -13,8 +15,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         return errorResponse(event, 401, "NO_TOKEN_PROVIDED");
     }
 
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
+
     try {
-        verifyJWT(token);
+        const payload = verifyJWT(token) as { sub?: string };
+        const actor = payload?.sub;
 
         let { firstName, lastName, email, sendEmail } = JSON.parse(event.body || "{}");
         const trimmedFirstName = firstName?.trim() ?? "";
@@ -42,6 +48,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         }
 
         const result = await collection.insertOne(newMember);
+        await auditLog({
+            at: new Date(),
+            action: "member_create",
+            actor,
+            resourceType: "member",
+            resourceId: String(result.insertedId),
+            ip: getClientIp(event),
+        });
 
         if (sendEmail) {
             const { success, error } = await sendQrCodeEmail(process.env.SES_SENDER_EMAIL!, trimmedFirstName, trimmedLastName, trimmedEmail, qrUuid);
@@ -54,7 +68,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
                 return messageResponse(event, 201, "MEMBER_CREATED_EMAIL_SUCCESS", undefined, { memberId: result.insertedId });
             } else {
-                return messageResponse(event, 201, "MEMBER_CREATED_EMAIL_FAILED", undefined, { details: error, memberId: result.insertedId });
+                return messageResponse(event, 201, "MEMBER_CREATED_EMAIL_FAILED", undefined, { memberId: result.insertedId });
             }
         }
 

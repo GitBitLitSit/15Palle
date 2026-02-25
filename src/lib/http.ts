@@ -17,6 +17,10 @@ export function getRequestLanguage(event: APIGatewayProxyEventV2): string {
   return getLanguageFromAcceptLanguageHeader(acceptLanguage);
 }
 
+export function getClientIp(event: APIGatewayProxyEventV2): string {
+  return event.requestContext?.http?.sourceIp ?? "unknown";
+}
+
 export function json(statusCode: number, body: unknown, extraHeaders?: Record<string, string>): APIGatewayProxyResultV2 {
   return {
     statusCode,

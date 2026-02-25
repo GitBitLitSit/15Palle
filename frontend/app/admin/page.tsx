@@ -33,8 +33,6 @@ export default function AdminLoginPage() {
         password: ownerPassword,
       })
 
-      console.log("[v0] Admin login successful:", result)
-
       if (result.token) {
         localStorage.setItem("token", result.token)
       }

@@ -7,6 +7,7 @@ import { Collection, ObjectId } from "mongodb";
 import { AppError } from "../../lib/appError";
 import { errorResponse, getRequestLanguage, messageResponse } from "../../lib/http";
 import { t } from "../../lib/i18n";
+import { checkBodySize } from "../../lib/bodySize";
 
 type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED";
 
@@ -43,11 +44,13 @@ async function recordAndBroadcast(
             timestamp: now
         });
     } catch (wsError) {
-        console.error("Failed to broadcast:", wsError);
+        // Broadcast failure is non-fatal; check-in was already recorded
     }
 }
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
 
     let isAuthenticated = false;
     let authSource: CheckIn["source"] = "unknown";

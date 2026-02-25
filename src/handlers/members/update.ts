@@ -5,7 +5,9 @@ import { sendQrCodeEmail } from "../../adapters/email";
 import { Member } from "../../lib/types";
 import { ObjectId } from "mongodb";
 import { AppError } from "../../lib/appError";
-import { errorResponse, json } from "../../lib/http";
+import { errorResponse, json, getClientIp } from "../../lib/http";
+import { checkBodySize } from "../../lib/bodySize";
+import { auditLog } from "../../lib/auditLog";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const token = event.headers.authorization?.split(" ")[1];
@@ -14,8 +16,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         return errorResponse(event, 401, "NO_TOKEN_PROVIDED");
     }
 
+    const bodySizeRes = checkBodySize(event);
+    if (bodySizeRes) return bodySizeRes;
+
     try {
-        verifyJWT(token);
+        const payload = verifyJWT(token) as { sub?: string };
+        const actor = payload?.sub;
 
         const id = event.pathParameters?.id;
         if (!id) {
@@ -92,6 +98,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                 }
             }
 
+            await auditLog({
+                at: new Date(),
+                action: "member_update",
+                actor,
+                resourceType: "member",
+                resourceId: id,
+                ip: getClientIp(event),
+            });
             return json(200, { success: true, member: updatedMember, emailSent });
         }
 

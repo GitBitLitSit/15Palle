@@ -830,7 +830,7 @@ export default function OwnerDashboard() {
     <div className="flex min-h-screen flex-col">
       <Navigation />
 
-      <main className="flex-1 py-16">
+      <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
