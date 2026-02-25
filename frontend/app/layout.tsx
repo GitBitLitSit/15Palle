@@ -87,8 +87,8 @@ export default function RootLayout({
   const lang = "it"
 
   return (
-    <html lang={lang}>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
+    <html lang={lang} suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans`} suppressHydrationWarning>
         <SeoJsonLd />
         <I18nProvider initialLanguage={lang}>
           <Suspense fallback={null}>{children}</Suspense>
