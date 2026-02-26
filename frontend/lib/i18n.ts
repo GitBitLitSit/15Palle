@@ -19,7 +19,7 @@ const resources = {
         language: "Lingua",
       },
       footer: {
-        tagline: "Il tuo club di biliardo e bar. La combinazione perfetta tra sport e divertimento.",
+        tagline: "Il tuo circolo sportivo di biliardo e bar. La combinazione perfetta tra sport e divertimento.",
         contact: "Contatti",
         openingHours: "Orari di apertura",
         quickLinks: "Link rapidi",
@@ -164,7 +164,7 @@ const resources = {
         },
         heroDescription: {
           line1: "Tavoli professionali. Drink freschi. Ottima compagnia.",
-          line2: "Il club di biliardo di riferimento a {{city}} dal primo giorno.",
+          line2: "Il circolo sportivo di biliardo di riferimento a {{city}} dal primo giorno.",
         },
         ctaMemberLogin: "Login membri",
         badges: {
@@ -209,7 +209,7 @@ const resources = {
         },
         heroTitle: "Benvenuto da {{club}}",
         heroSubtitle:
-          "Vivi il miglior club di biliardo in città. Tavoli professionali, grande atmosfera e una community accogliente.",
+          "Vivi il miglior circolo di biliardo in città. Tavoli professionali, grande atmosfera e una community accogliente.",
         features: {
           professionalTablesTitle: "Tavoli professionali",
           professionalTablesText:
@@ -222,7 +222,7 @@ const resources = {
           extendedHoursText: "Aperti fino a tardi ogni giorno. Perfetto dopo il lavoro o per i tornei nel weekend.",
           extendedHoursSuffix: "Aperti fino all'1:00.",
         },
-        ourClub: "Il nostro club",
+        ourClub: "Il nostro circolo",
         visitUs: "Vieni a trovarci",
         contactInformation: "Informazioni di contatto",
         address: "Indirizzo",
