@@ -10,10 +10,10 @@ export function SeoJsonLd() {
     "@type": "LocalBusiness",
     "@id": `${siteUrl}/#organization`,
     name: "Circolo sportivo 15 Palle",
-    alternateName: ["15 Palle", "15palle", "15palle.com", "15 Palle Billiard Club", "15 Palle Biliardo"],
+    alternateName: ["15 Palle", "15palle", "15palle.com", "15 Palle Biliardo", "Circolo 15 Palle"],
     url: siteUrl,
     description:
-      "15 Palle è il tuo club di biliardo e bar a Bolzano. Tavoli professionali, atmosfera unica e comunità accogliente. Aperto a tutti.",
+      "Circolo sportivo 15 Palle a Bolzano: biliardo professionale, bar, eventi e community per appassionati. Tavoli professionali, atmosfera unica. Via Bruno Buozzi 12.",
     image: `${siteUrl}/logo.webp`,
     logo: `${siteUrl}/logo.webp`,
     telephone: "+39 392 810 0919",
