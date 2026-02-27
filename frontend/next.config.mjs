@@ -9,6 +9,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async rewrites() {
+    return [
+      // Serve icon.png for favicon.ico so Google and browsers get the same favicon
+      { source: "/favicon.ico", destination: "/icon.png" },
+    ]
+  },
   async headers() {
     return [
       {
