@@ -91,13 +91,13 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="relative cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-transparent rounded-full"
-                  onClick={() => openLightbox("/logo.webp", "15 Palle")}
+                  onClick={() => openLightbox("/logo.webp", "15palle - Circolo sportivo 15 Palle")}
                   aria-label={t("home.lightboxOpen", "View image full size")}
                 >
                   <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
                   <Image
                     src="/logo.webp"
-                    alt="15 Palle"
+                    alt="15palle - Circolo sportivo 15 Palle"
                     width={200}
                     height={200}
                     sizes="(min-width: 768px) 160px, 128px"

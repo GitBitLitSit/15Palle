@@ -53,7 +53,7 @@ export const metadata: Metadata = {
         url: "/logo.webp",
         width: 512,
         height: 512,
-        alt: "Circolo sportivo 15 Palle Logo",
+        alt: "15palle - Circolo sportivo 15 Palle",
       },
     ],
   },

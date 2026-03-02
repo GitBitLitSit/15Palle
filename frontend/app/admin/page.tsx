@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
                       <div className="rounded-full border border-white/20 bg-white/10 p-1">
                         <Image
                           src="/logo.webp"
-                          alt="15 Palle"
+                          alt="15palle - Circolo sportivo 15 Palle"
                           width={44}
                           height={44}
                           sizes="44px"
