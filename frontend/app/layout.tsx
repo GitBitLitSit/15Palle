@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
-import { ConsentAwareAnalytics } from "@/components/consent-aware-analytics"
 import { CookieConsent } from "@/components/cookie-consent"
 import { I18nProvider } from "@/components/i18n-provider"
 import { SeoJsonLd } from "@/components/seo-json-ld"
@@ -96,7 +95,6 @@ export default function RootLayout({
           <Suspense fallback={null}>{children}</Suspense>
           <CookieConsent />
         </I18nProvider>
-        <ConsentAwareAnalytics />
       </body>
     </html>
   )

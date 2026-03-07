@@ -51,8 +51,16 @@ export default function HomePage() {
   const mapsHref = "https://maps.app.goo.gl/m9vFp5QStRofnNaJ9"
   const mapsEmbedSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`
   const addressLine = `Via Bruno Buozzi, 12, 39100 ${city} BZ`
-  const isSunday = new Date().getDay() === 0
-  const openUntilLabel = t(isSunday ? "home.badges.openUntilSunday" : "home.badges.openUntilWeekday")
+
+  // Avoid hydration mismatch (React #418): server and client can have different Date/timezone.
+  // Use a stable default for first paint, then set the real value after mount.
+  const [openUntilLabel, setOpenUntilLabel] = useState(() =>
+    t("home.badges.openUntilWeekday")
+  )
+  useEffect(() => {
+    const isSunday = new Date().getDay() === 0
+    setOpenUntilLabel(t(isSunday ? "home.badges.openUntilSunday" : "home.badges.openUntilWeekday"))
+  }, [t])
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans selection:bg-primary/30">
