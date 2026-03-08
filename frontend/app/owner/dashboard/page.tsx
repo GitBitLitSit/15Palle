@@ -754,12 +754,12 @@ export default function OwnerDashboard() {
     "e-mail": "email",
     mail: "email",
     indirizzoemail: "email",        // IT: indirizzo e-mail
-    indirizzoe-mail: "email",
+    "indirizzoe-mail": "email",
     postaelettronica: "email",      // IT: posta elettronica
     emailadresse: "email",          // DE: E-Mail-Adresse
-    e-mailadresse: "email",
+    "e-mailadresse": "email",
     emailaddress: "email",
-    e-mailaddress: "email",
+    "e-mailaddress": "email",
   }
   const normalizeExcelHeader = (key: string) =>
     String(key ?? "")
