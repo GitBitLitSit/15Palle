@@ -277,6 +277,9 @@ export default $config({
       },
     });*/
 
+    // When using Amplify (not SST) for the frontend: after "npm run dev" or "sst deploy"
+    // the WebSocket URL can change. Copy the "websocket" value from the deploy output
+    // into Amplify env var NEXT_PUBLIC_WEBSOCKET_API_URL and redeploy the app.
     return {
       api: api.url,
       websocket: webSocket.url,
