@@ -20,13 +20,22 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
         const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(queryParams.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
         const skip = (page - 1) * limit;
+        const status = (queryParams.status || "all").toLowerCase();
+        const statusFilter = status === "success" || status === "failure" ? status : "all";
 
         const db = await connectToMongo();
         const collection = db.collection("checkins");
 
-        const total = await collection.countDocuments();
+        const matchStage =
+            statusFilter === "success"
+                ? { $match: { $and: [{ $or: [{ warning: { $in: [null, ""] } }, { warning: { $exists: false } }] }, { $or: [{ warningCode: { $in: [null, ""] } }, { warningCode: { $exists: false } }] }] } }
+                : statusFilter === "failure"
+                    ? { $match: { $or: [{ warning: { $exists: true, $nin: [null, ""] } }, { warningCode: { $exists: true, $nin: [null, ""] } }] } }
+                    : null;
 
-        const checkIns = await collection.aggregate([
+        const pipeline: object[] = [];
+        if (matchStage) pipeline.push(matchStage);
+        pipeline.push(
             { $sort: { checkInTime: -1 } },
             { $skip: skip },
             { $limit: limit },
@@ -39,13 +48,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                 }
             },
             { $unwind: { path: "$memberData", preserveNullAndEmptyArrays: true } },
-            {
-                $addFields: {
-                    member: "$memberData"
-                }
-            },
+            { $addFields: { member: "$memberData" } },
             { $project: { memberData: 0 } }
-        ]).toArray();
+        );
+
+        const countPipeline: object[] = [];
+        if (matchStage) countPipeline.push(matchStage);
+        countPipeline.push({ $count: "total" });
+        const countResult = await collection.aggregate(countPipeline).toArray();
+        const total = countResult[0]?.total ?? 0;
+
+        const checkIns = await collection.aggregate(pipeline).toArray();
 
         return {
             statusCode: 200,

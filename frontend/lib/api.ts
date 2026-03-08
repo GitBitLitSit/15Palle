@@ -161,8 +161,14 @@ export async function verifyAndRecover(data: {
   return handleResponse(res)
 }
 
-export async function getCheckIns(page = 1, limit = 50) {
-  const res = await fetch(`${API_URL}/auth/check-ins?page=${page}&limit=${limit}`, {
+export async function getCheckIns(
+  page = 1,
+  limit = 50,
+  status?: "all" | "success" | "failure"
+) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (status && status !== "all") params.set("status", status)
+  const res = await fetch(`${API_URL}/auth/check-ins?${params.toString()}`, {
     method: "GET",
     headers: getAuthHeaders(),
   })
