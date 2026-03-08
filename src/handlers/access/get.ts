@@ -15,12 +15,26 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         verifyJWT(token);
 
         const queryParams = event.queryStringParameters || {};
+        const rawQuery = event.rawQueryString || "";
+        const paramsFromRaw = Object.fromEntries(
+            rawQuery
+                .split("&")
+                .filter((pair) => pair.includes("="))
+                .map((pair) => {
+                    const eq = pair.indexOf("=");
+                    const k = decodeURIComponent(pair.slice(0, eq)).trim();
+                    const v = decodeURIComponent(pair.slice(eq + 1)).trim();
+                    return [k, v] as const;
+                })
+                .filter(([k]) => k !== "")
+        );
+        const merged = { ...paramsFromRaw, ...queryParams };
         const MAX_LIMIT = 100;
         const DEFAULT_LIMIT = 50;
-        const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
-        const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(queryParams.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
+        const page = Math.max(1, parseInt(merged.page || "1", 10) || 1);
+        const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(merged.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
         const skip = (page - 1) * limit;
-        const status = (queryParams.status || "all").toLowerCase();
+        const status = (merged.status || "all").toLowerCase();
         const statusFilter = status === "success" || status === "failure" ? status : "all";
 
         const db = await connectToMongo();

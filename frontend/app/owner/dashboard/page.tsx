@@ -387,8 +387,16 @@ export default function OwnerDashboard() {
       return newList
     })
 
+    const isHiddenByFilter =
+      (filter === "success" && hasWarning) || (filter === "failure" && !hasWarning)
+    const description = isAccessDenied
+      ? (localizedWarning || t("dashboard.checkins.warnings.invalidQr"))
+      : t("dashboard.realtime.memberCheckedIn", {
+          firstName: event.member?.firstName || t("dashboard.checkins.unknownMember"),
+          lastName: event.member?.lastName || "",
+        })
+
     // Always update "hidden" notification count when event doesn't match current filter
-    // (so it shows when user is on Check-ins tab, or when they switch to it from Members/Import)
     if (filter === "success" && hasWarning) {
       setCheckInNotification((prev) =>
         prev?.type === "failed" ? { type: "failed", count: prev.count + 1 } : { type: "failed", count: 1 }
@@ -401,18 +409,20 @@ export default function OwnerDashboard() {
 
     if (activeTabRef.current !== "checkins") {
       setUnreadCheckInsCount((prev) => prev + 1)
-      const description = isAccessDenied
-        ? (localizedWarning || t("dashboard.checkins.warnings.invalidQr"))
-        : t("dashboard.realtime.memberCheckedIn", {
-            firstName: event.member?.firstName || t("dashboard.checkins.unknownMember"),
-            lastName: event.member?.lastName || "",
-          })
       toast({
         title: isAccessDenied
           ? t("dashboard.realtime.accessDenied")
           : t("dashboard.realtime.newCheckin"),
         description,
         variant: isAccessDenied ? "destructive" : "default",
+      })
+    } else if (isHiddenByFilter) {
+      toast({
+        title: hasWarning
+          ? t("dashboard.realtime.accessDenied")
+          : t("dashboard.realtime.newCheckin"),
+        description,
+        variant: hasWarning ? "destructive" : "default",
       })
     }
   }, [getLocalizedWarningMessage, playFeedbackSound, t, toast])
