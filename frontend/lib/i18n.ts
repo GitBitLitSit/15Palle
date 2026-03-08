@@ -389,7 +389,14 @@ const resources = {
           warnings: {
             invalidQr: "Accesso negato: QR non valido / membro non trovato.",
             memberBlocked: "Accesso negato: il membro è bloccato.",
+            scannedTooOften: "Scansione troppo frequente",
           },
+          filterAll: "Tutti",
+          filterSuccess: "Solo riusciti",
+          filterFailure: "Solo non riusciti",
+          notificationNewFailed: "Nuovo check-in non riuscito",
+          notificationNewSuccess: "Nuovo check-in riuscito",
+          notificationView: "Visualizza",
         },
         dialogs: {
           createTitle: "Crea nuovo membro",
@@ -904,7 +911,14 @@ const resources = {
           warnings: {
             invalidQr: "Access denied: invalid QR / member not found.",
             memberBlocked: "Access denied: member is blocked.",
+            scannedTooOften: "Scanned too often",
           },
+          filterAll: "All",
+          filterSuccess: "Successful only",
+          filterFailure: "Unsuccessful only",
+          notificationNewFailed: "New failed check-in",
+          notificationNewSuccess: "New successful check-in",
+          notificationView: "View",
         },
         dialogs: {
           createTitle: "Create New Member",
@@ -1419,7 +1433,14 @@ const resources = {
           warnings: {
             invalidQr: "Zugriff verweigert: Ungültiger QR / Mitglied nicht gefunden.",
             memberBlocked: "Zugriff verweigert: Mitglied ist gesperrt.",
+            scannedTooOften: "Zu oft gescannt",
           },
+          filterAll: "Alle",
+          filterSuccess: "Nur erfolgreiche",
+          filterFailure: "Nur fehlgeschlagene",
+          notificationNewFailed: "Neuer fehlgeschlagener Check-in",
+          notificationNewSuccess: "Neuer erfolgreicher Check-in",
+          notificationView: "Anzeigen",
         },
         dialogs: {
           createTitle: "Neues Mitglied anlegen",

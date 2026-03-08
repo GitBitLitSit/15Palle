@@ -101,6 +101,20 @@ function resolveCheckInDate(checkIn: CheckInEvent): Date | null {
   return parsed
 }
 
+/** Detect "scanned too often" / passback style messages (often stored in Italian from device). */
+function isLastScanWarning(warning: string | null | undefined): boolean {
+  if (!warning?.trim()) return false
+  const w = warning.trim().toLowerCase()
+  return (
+    w.includes("ultima scansione") ||
+    w.includes("last scan") ||
+    w.includes("letzte scan") ||
+    /\d+\s*minuti\s+fa/.test(w) ||
+    /\d+\s*minute(s)?\s+ago/.test(w) ||
+    /vor\s+\d+\s*minuten/.test(w)
+  )
+}
+
 function isUnauthorized(error: unknown): boolean {
   const err = error as Error & { status?: number }
   return err?.status === 401
@@ -168,9 +182,13 @@ export default function OwnerDashboard() {
   const [isCheckInsLoading, setIsCheckInsLoading] = useState(false)
   const [unreadCheckInsCount, setUnreadCheckInsCount] = useState(0)
   const checkInsPageSize = 20
+  type CheckInsFilter = "all" | "success" | "failure"
+  const [checkInsFilter, setCheckInsFilter] = useState<CheckInsFilter>("all")
+  const [checkInNotification, setCheckInNotification] = useState<{ type: "failed" | "success"; count: number } | null>(null)
 
   // --- REFS ---
   const activeTabRef = useRef(activeTab)
+  const checkInsFilterRef = useRef(checkInsFilter)
   const checkInsPageRef = useRef(checkInsPage)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -248,21 +266,29 @@ export default function OwnerDashboard() {
 
   useEffect(() => { activeTabRef.current = activeTab }, [activeTab])
   useEffect(() => { checkInsPageRef.current = checkInsPage }, [checkInsPage])
+  useEffect(() => { checkInsFilterRef.current = checkInsFilter }, [checkInsFilter])
+
+  // Clear "hidden" check-in notification when viewing all
+  useEffect(() => {
+    if (checkInsFilter === "all") setCheckInNotification(null)
+  }, [checkInsFilter])
 
   const getLocalizedWarningMessage = useCallback(
     (checkIn: CheckInEvent): string | null => {
       const warningCode = resolveWarningCode(checkIn)
-      if (!warningCode) return checkIn.warning || null
-
       if (warningCode === "INVALID_QR") {
         return t("dashboard.checkins.warnings.invalidQr")
       }
       if (warningCode === "MEMBER_BLOCKED") {
         return t("dashboard.checkins.warnings.memberBlocked")
       }
-      return null
+      // "Scanned too often" / passback style: show translated message
+      if (isLastScanWarning(checkIn.warning)) {
+        return t("dashboard.checkins.warnings.scannedTooOften")
+      }
+      return checkIn.warning || null
     },
-    [t],
+    [t, i18n.language],
   )
 
   // --- DIALOGS & FORMS ---
@@ -340,6 +366,7 @@ export default function OwnerDashboard() {
     const warningCode = resolveWarningCode(event)
     const localizedWarning = getLocalizedWarningMessage(event)
     const isAccessDenied = warningCode === "INVALID_QR" || warningCode === "MEMBER_BLOCKED"
+    const hasWarning = Boolean(localizedWarning)
 
     if (isAccessDenied) {
       playFeedbackSound("negative")
@@ -356,11 +383,19 @@ export default function OwnerDashboard() {
       return prev
     })
 
-    if (activeTabRef.current !== "checkins") {
+    if (activeTabRef.current === "checkins") {
+      const filter = checkInsFilterRef.current
+      if (filter === "success" && hasWarning) {
+        setCheckInNotification((prev) =>
+          prev?.type === "failed" ? { type: "failed", count: prev.count + 1 } : { type: "failed", count: 1 }
+        )
+      } else if (filter === "failure" && !hasWarning) {
+        setCheckInNotification((prev) =>
+          prev?.type === "success" ? { type: "success", count: prev.count + 1 } : { type: "success", count: 1 }
+        )
+      }
+    } else {
       setUnreadCheckInsCount((prev) => prev + 1)
-      const memberName = event.member
-        ? `${event.member.firstName} ${event.member.lastName}`
-        : t("dashboard.checkins.unknownMember")
       const description = isAccessDenied
         ? (localizedWarning || t("dashboard.checkins.warnings.invalidQr"))
         : t("dashboard.realtime.memberCheckedIn", {
@@ -1043,18 +1078,71 @@ export default function OwnerDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Filter: All / Successful only / Unsuccessful only */}
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    {(["all", "success", "failure"] as const).map((f) => (
+                      <Button
+                        key={f}
+                        variant={checkInsFilter === f ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCheckInsFilter(f)}
+                      >
+                        {f === "all"
+                          ? t("dashboard.checkins.filterAll")
+                          : f === "success"
+                            ? t("dashboard.checkins.filterSuccess")
+                            : t("dashboard.checkins.filterFailure")}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* Notification when a new check-in is hidden by current filter */}
+                  {checkInNotification && (
+                    <div
+                      className={`mb-4 flex items-center justify-between rounded-lg border p-3 ${
+                        checkInNotification.type === "failed"
+                          ? "border-destructive/50 bg-destructive/15 text-destructive-foreground"
+                          : "border-primary/50 bg-primary/15 text-primary-foreground"
+                      }`}
+                    >
+                      <p className="text-sm font-medium">
+                        {checkInNotification.type === "failed"
+                          ? t("dashboard.checkins.notificationNewFailed")
+                          : t("dashboard.checkins.notificationNewSuccess")}
+                        {checkInNotification.count > 1 ? ` (${checkInNotification.count})` : ""}
+                      </p>
+                      <Button
+                        variant={checkInNotification.type === "failed" ? "destructive" : "default"}
+                        size="sm"
+                        onClick={() => {
+                          setCheckInsFilter(checkInNotification.type === "failed" ? "failure" : "success")
+                          setCheckInNotification(null)
+                        }}
+                      >
+                        {t("dashboard.checkins.notificationView")}
+                      </Button>
+                    </div>
+                  )}
+
                   {isCheckInsLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="text-muted-foreground">{t("dashboard.checkins.loading")}</div>
                     </div>
-                  ) : checkInsData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">{t("dashboard.checkins.none")}</p>
-                    </div>
-                  ) : (
+                  ) : (() => {
+                    const filteredCheckIns = checkInsData.filter((c: CheckInEvent) => {
+                      const hasW = Boolean(getLocalizedWarningMessage(c))
+                      if (checkInsFilter === "all") return true
+                      if (checkInsFilter === "success") return !hasW
+                      return hasW
+                    })
+                    return filteredCheckIns.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">{t("dashboard.checkins.none")}</p>
+                      </div>
+                    ) : (
                     <div className="space-y-4">
-                      {checkInsData.map((checkIn: CheckInEvent, index) => {
+                      {filteredCheckIns.map((checkIn: CheckInEvent, index) => {
                         const warningMessage = getLocalizedWarningMessage(checkIn)
                         const hasWarning = Boolean(warningMessage)
                         const checkInDate = resolveCheckInDate(checkIn)
@@ -1107,7 +1195,8 @@ export default function OwnerDashboard() {
                         )
                       })}
                     </div>
-                  )}
+                    )
+                  })()}
 
                   {/* Check-ins Pagination */}
                   <div className="mt-6 flex items-center justify-between">
