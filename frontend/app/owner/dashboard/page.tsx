@@ -710,6 +710,45 @@ export default function OwnerDashboard() {
     }
   }
 
+  // Excel import: supported column headers = more word options (EN / IT / DE). Normalized = trim, lower, remove spaces/underscores/hyphens.
+  const EXCEL_HEADER_TO_FIELD: Record<string, "firstName" | "lastName" | "email"> = {
+    // First name
+    firstname: "firstName",
+    first_name: "firstName",
+    name: "firstName",
+    nome: "firstName",              // IT
+    nomedibattesimo: "firstName",   // IT: nome di battesimo
+    vorname: "firstName",           // DE
+    givenname: "firstName",        // EN: given name
+    given_name: "firstName",
+    prenom: "firstName",            // FR
+    // Last name
+    lastname: "lastName",
+    last_name: "lastName",
+    surname: "lastName",
+    cognome: "lastName",            // IT
+    nomedifamiglia: "lastName",     // IT: nome di famiglia
+    nachname: "lastName",           // DE
+    familienname: "lastName",       // DE: family name
+    familyname: "lastName",
+    family_name: "lastName",
+    // Email
+    email: "email",
+    "e-mail": "email",
+    mail: "email",
+    postaelettronica: "email",      // IT: posta elettronica
+    emailadresse: "email",          // DE: E-Mail-Adresse
+  }
+  const normalizeExcelHeader = (key: string) =>
+    String(key)
+      .trim()
+      .toLowerCase()
+      .replace(/ä/g, "a")
+      .replace(/ö/g, "o")
+      .replace(/ü/g, "u")
+      .replace(/ß/g, "ss")
+      .replace(/[\s_\-]+/g, "")
+
   const handleImportExcel = async () => {
     if (!importFile || isImporting) return
     setIsImporting(true)
@@ -728,18 +767,20 @@ export default function OwnerDashboard() {
       const worksheet = workbook.Sheets[sheetName]
       const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" })
 
-      // Normalize headers and extract firstName/lastName/email.
+      // Map normalized column headers to firstName/lastName/email (many title options in EN/IT/DE).
       const normalizedRows = rawRows.map((row) => {
-        const normalized: Record<string, string> = {}
+        const extracted: Record<string, string> = { firstName: "", lastName: "", email: "" }
         Object.entries(row).forEach(([key, value]) => {
-          const normalizedKey = String(key).trim().toLowerCase().replace(/[\s_]+/g, "")
-          normalized[normalizedKey] = String(value ?? "").trim()
+          const normalizedKey = normalizeExcelHeader(key)
+          const field = EXCEL_HEADER_TO_FIELD[normalizedKey]
+          if (!field) return
+          const rawStr = String(value ?? "").trim()
+          extracted[field] = field === "email" ? rawStr.toLowerCase() : rawStr
         })
-
         return {
-          firstName: normalized.firstname || "",
-          lastName: normalized.lastname || "",
-          email: (normalized.email || "").toLowerCase(),
+          firstName: String(extracted.firstName ?? ""),
+          lastName: String(extracted.lastName ?? ""),
+          email: String(extracted.email ?? "").toLowerCase(),
         }
       })
 
