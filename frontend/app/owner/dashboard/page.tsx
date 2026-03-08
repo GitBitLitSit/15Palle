@@ -717,16 +717,16 @@ export default function OwnerDashboard() {
   }
 
   // Excel import: supported column headers = more word options (EN / IT / DE). Normalized = trim, lower, remove spaces/underscores/hyphens.
-  const EXCEL_HEADER_TO_FIELD: Record<string, "firstName" | "lastName" | "email"> = {
+  // fullName = "First [Middle...] Last" (last word = lastName). fullNameLastFirst = "Cognome e Nome" style (first word = lastName).
+  const EXCEL_HEADER_TO_FIELD: Record<string, "firstName" | "lastName" | "email" | "fullName" | "fullNameLastFirst"> = {
     // First name
     firstname: "firstName",
     first_name: "firstName",
-    name: "firstName",
+    givenname: "firstName",        // EN: given name
+    given_name: "firstName",
     nome: "firstName",              // IT
     nomedibattesimo: "firstName",   // IT: nome di battesimo
     vorname: "firstName",           // DE
-    givenname: "firstName",        // EN: given name
-    given_name: "firstName",
     prenom: "firstName",            // FR
     // Last name
     lastname: "lastName",
@@ -738,22 +738,41 @@ export default function OwnerDashboard() {
     familienname: "lastName",       // DE: family name
     familyname: "lastName",
     family_name: "lastName",
-    // Email
+    // Full name (one column "First Last" – split on first space)
+    name: "fullName",
+    fullname: "fullName",
+    full_name: "fullName",
+    nomeecognome: "fullName",       // IT: nome e cognome
+    nameandsurname: "fullName",
+    vollständigername: "fullName",   // DE
+    vollstandigername: "fullName",   // DE (normalized)
+    // Full name with last name first (IT: "Cognome e Nome" → "LASTNAME FIRSTNAME")
+    cognomeenome: "fullNameLastFirst",
+    cognomenome: "fullNameLastFirst",
+    // Email (including Italian "indirizzo e-mail", etc.)
     email: "email",
     "e-mail": "email",
     mail: "email",
+    indirizzoemail: "email",        // IT: indirizzo e-mail
+    indirizzoe-mail: "email",
     postaelettronica: "email",      // IT: posta elettronica
     emailadresse: "email",          // DE: E-Mail-Adresse
+    e-mailadresse: "email",
+    emailaddress: "email",
+    e-mailaddress: "email",
   }
   const normalizeExcelHeader = (key: string) =>
-    String(key)
+    String(key ?? "")
+      .replace(/[\u200B\u200C\u200D\uFEFF]/g, "")  // strip zero-width / BOM from Excel headers
       .trim()
       .toLowerCase()
+      .replace(/\s*\([^)]*\)\s*/g, "")  // strip parenthetical text e.g. "E-Mail (required)"
       .replace(/ä/g, "a")
       .replace(/ö/g, "o")
       .replace(/ü/g, "u")
       .replace(/ß/g, "ss")
       .replace(/[\s_\-]+/g, "")
+      .trim()
 
   const handleImportExcel = async () => {
     if (!importFile || isImporting) return
@@ -774,25 +793,65 @@ export default function OwnerDashboard() {
       const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" })
 
       // Map normalized column headers to firstName/lastName/email (many title options in EN/IT/DE).
+      // Support fullName column: "First Last" split on first space when first/last are missing.
       const normalizedRows = rawRows.map((row) => {
-        const extracted: Record<string, string> = { firstName: "", lastName: "", email: "" }
+        const extracted: Record<string, string> = {
+          firstName: "",
+          lastName: "",
+          email: "",
+          fullName: "",
+          fullNameLastFirst: "",
+        }
         Object.entries(row).forEach(([key, value]) => {
           const normalizedKey = normalizeExcelHeader(key)
-          const field = EXCEL_HEADER_TO_FIELD[normalizedKey]
+          let field = EXCEL_HEADER_TO_FIELD[normalizedKey]
+          // Fallback for weird email column titles: any header containing "email" or "mail"
+          if (!field && (normalizedKey.includes("email") || normalizedKey.includes("mail"))) {
+            field = "email"
+          }
           if (!field) return
           const rawStr = String(value ?? "").trim()
           extracted[field] = field === "email" ? rawStr.toLowerCase() : rawStr
         })
+        let firstName = String(extracted.firstName ?? "").trim()
+        let lastName = String(extracted.lastName ?? "").trim()
+        const fullName = String(extracted.fullName ?? "").trim()
+        const fullNameLastFirst = String(extracted.fullNameLastFirst ?? "").trim()
+        // "Cognome e Nome" style: first word = lastName, rest = firstName (e.g. "AFFANE OTMAN" → Otman, Affane)
+        if (fullNameLastFirst) {
+          const parts = fullNameLastFirst.split(/\s+/).filter(Boolean)
+          if (parts.length >= 2) {
+            if (!lastName) lastName = parts[0] ?? ""
+            if (!firstName) firstName = parts.slice(1).join(" ")
+          } else if (parts.length === 1) {
+            if (!lastName) lastName = parts[0] ?? ""
+          }
+        }
+        if (fullName) {
+          const parts = fullName.split(/\s+/).filter(Boolean)
+          // Last word = lastName, everything before = firstName (supports multiple first names e.g. "John Paul Smith")
+          if (parts.length >= 2) {
+            if (!firstName) firstName = parts.slice(0, -1).join(" ")
+            if (!lastName) lastName = parts[parts.length - 1] ?? ""
+          } else if (parts.length === 1) {
+            if (!firstName) firstName = parts[0] ?? ""
+          }
+        }
         return {
-          firstName: String(extracted.firstName ?? ""),
-          lastName: String(extracted.lastName ?? ""),
+          firstName,
+          lastName,
           email: String(extracted.email ?? "").toLowerCase(),
         }
       })
 
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      // Skip rows without a valid email; require firstName, lastName, and valid email
       const validRows = normalizedRows.filter(
-        (row) => row.firstName && row.lastName && row.email && emailPattern.test(row.email),
+        (row) =>
+          row.firstName &&
+          row.lastName &&
+          (row.email?.trim() ?? "") !== "" &&
+          emailPattern.test(row.email.trim()),
       )
       const invalidRows = Math.max(normalizedRows.length - validRows.length, 0)
 
