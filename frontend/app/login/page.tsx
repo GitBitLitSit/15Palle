@@ -91,6 +91,7 @@ export default function LoginPage() {
     setError(null)
   }
 
+  //We do this for free
   return (
     <div className="flex min-h-screen flex-col">
       <Navigation />
