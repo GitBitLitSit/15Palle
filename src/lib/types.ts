@@ -15,7 +15,7 @@ export interface CheckIn {
     checkInTime: Date;
     source: "raspberry_pi" | "admin" | "unknown";
     warning?: string | null;
-    warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | null;
+    warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN" | null;
     warningParams?: Record<string, unknown>;
     qrUuid?: string;
 }

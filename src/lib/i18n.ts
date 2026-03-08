@@ -51,6 +51,7 @@ const resources = {
       warnings: {
         INVALID_QR: "Accesso negato: QR non valido / membro non trovato.",
         MEMBER_BLOCKED: "Accesso negato: il membro è bloccato.",
+        SCANNED_TOO_OFTEN: "Scansione troppo frequente.",
       },
     },
   },
@@ -101,6 +102,7 @@ const resources = {
       warnings: {
         INVALID_QR: "Access denied: invalid QR / member not found.",
         MEMBER_BLOCKED: "Access denied: member is blocked.",
+        SCANNED_TOO_OFTEN: "Scanned too often.",
       },
     },
   },
@@ -151,6 +153,7 @@ const resources = {
       warnings: {
         INVALID_QR: "Zugriff verweigert: Ungültiger QR / Mitglied nicht gefunden.",
         MEMBER_BLOCKED: "Zugriff verweigert: Mitglied ist gesperrt.",
+        SCANNED_TOO_OFTEN: "Zu oft gescannt.",
       },
     },
   },

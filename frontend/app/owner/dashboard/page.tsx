@@ -72,12 +72,12 @@ function getTokenExpiryMs(token: string): number | null {
   return null
 }
 
-type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED"
+type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN"
 
 function resolveWarningCode(checkIn: CheckInEvent): CheckInWarningCode | null {
   const explicitCode = (checkIn.warningCode || "").toUpperCase()
-  if (explicitCode === "INVALID_QR" || explicitCode === "MEMBER_BLOCKED") {
-    return explicitCode
+  if (explicitCode === "INVALID_QR" || explicitCode === "MEMBER_BLOCKED" || explicitCode === "SCANNED_TOO_OFTEN") {
+    return explicitCode as CheckInWarningCode
   }
 
   const warningText = (checkIn.warning || "").trim().toLowerCase()
@@ -88,6 +88,9 @@ function resolveWarningCode(checkIn: CheckInEvent): CheckInWarningCode | null {
   }
   if (warningText.includes("member is blocked") || warningText.includes("member blocked")) {
     return "MEMBER_BLOCKED"
+  }
+  if (warningText.includes("too often") || warningText.includes("troppo frequente") || warningText.includes("zu oft")) {
+    return "SCANNED_TOO_OFTEN"
   }
   return null
 }
@@ -282,7 +285,10 @@ export default function OwnerDashboard() {
       if (warningCode === "MEMBER_BLOCKED") {
         return t("dashboard.checkins.warnings.memberBlocked")
       }
-      // "Scanned too often" / passback style: show translated message
+      if (warningCode === "SCANNED_TOO_OFTEN") {
+        return t("dashboard.checkins.warnings.scannedTooOften")
+      }
+      // "Scanned too often" / passback style: show translated message from text
       if (isLastScanWarning(checkIn.warning)) {
         return t("dashboard.checkins.warnings.scannedTooOften")
       }
@@ -365,7 +371,7 @@ export default function OwnerDashboard() {
   const handleNewCheckIn = useCallback((event: CheckInEvent) => {
     const warningCode = resolveWarningCode(event)
     const localizedWarning = getLocalizedWarningMessage(event)
-    const isAccessDenied = warningCode === "INVALID_QR" || warningCode === "MEMBER_BLOCKED"
+    const isAccessDenied = warningCode === "INVALID_QR" || warningCode === "MEMBER_BLOCKED" || warningCode === "SCANNED_TOO_OFTEN"
     const hasWarning =
       Boolean(warningCode) ||
       isLastScanWarning(event?.warning) ||
@@ -972,7 +978,14 @@ export default function OwnerDashboard() {
             </Card>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value)
+              if (value === "checkins") setUnreadCheckInsCount(0)
+            }}
+            className="space-y-4"
+          >
             <TabsList className="grid h-auto w-full grid-cols-3 gap-2 rounded-xl border border-border/60 bg-muted/50 p-2 shadow-sm">
               <TabsTrigger
                 value="members"
@@ -986,7 +999,9 @@ export default function OwnerDashboard() {
               >
                 {t("dashboard.tabs.checkins")}
                 {unreadCheckInsCount > 0 && (
-                  <Badge className="ml-2 bg-primary text-primary-foreground">{unreadCheckInsCount}</Badge>
+                  <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded bg-orange-500 px-1.5 text-xs font-semibold text-white">
+                    {unreadCheckInsCount > 99 ? "99+" : unreadCheckInsCount}
+                  </span>
                 )}
               </TabsTrigger>
               <TabsTrigger

@@ -13,7 +13,7 @@ export interface CheckInEvent {
   type: "NEW_CHECKIN"
   member: Member | null
   warning?: string | null // e.g., "Passback Warning"
-  warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | null
+  warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN" | null
   warningParams?: Record<string, unknown>
   timestamp?: string
   checkInTime?: string

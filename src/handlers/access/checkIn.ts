@@ -9,7 +9,7 @@ import { errorResponse, getRequestLanguage, messageResponse } from "../../lib/ht
 import { t } from "../../lib/i18n";
 import { checkBodySize } from "../../lib/bodySize";
 
-type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED";
+type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN";
 
 async function recordAndBroadcast(
     checkinsCollection: Collection<CheckIn>,
@@ -129,6 +129,35 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             });
 
             return errorResponse(event, 403, "MEMBER_BLOCKED", undefined, { success: false });
+        }
+
+        // 5-minute cooldown: only one successful check-in per member per 5 minutes
+        const COOLDOWN_MS = 5 * 60 * 1000;
+        const lastSuccess = await checkinsCollection.findOne(
+            {
+                memberId: new ObjectId(member._id),
+                warning: null,
+                warningCode: null
+            } as any,
+            { sort: { checkInTime: -1 }, projection: { checkInTime: 1 } }
+        );
+        if (lastSuccess?.checkInTime) {
+            const lastTime = lastSuccess.checkInTime instanceof Date ? lastSuccess.checkInTime.getTime() : new Date(lastSuccess.checkInTime).getTime();
+            if (now.getTime() - lastTime < COOLDOWN_MS) {
+                const warningCode: CheckInWarningCode = "SCANNED_TOO_OFTEN";
+                const warningMsg = t(requestLanguage, `warnings.${warningCode}`);
+                await recordAndBroadcast(checkinsCollection, now, {
+                    memberId: new ObjectId(member._id),
+                    source: authSource,
+                    warning: warningMsg,
+                    warningCode,
+                    broadcastMember: { ...member, _id: member._id }
+                });
+                return messageResponse(event, 200, "COOLDOWN", undefined, {
+                    success: false,
+                    message: warningMsg
+                });
+            }
         }
 
         await recordAndBroadcast(checkinsCollection, now, {
