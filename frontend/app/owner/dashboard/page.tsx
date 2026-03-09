@@ -445,12 +445,10 @@ export default function OwnerDashboard() {
       setMembersData(result.data || [])
       setTotalMembers(result.pagination?.total || 0)
       setTotalMembersPages(result.pagination?.totalPages || 1)
-      
-      const allData = result.data || []
       setStats({
-          total: result.pagination?.total || 0,
-          blocked: allData.filter((m: Member) => m.blocked).length,
-          active: allData.filter((m: Member) => !m.blocked).length,
+          total: result.stats?.total ?? result.pagination?.total ?? 0,
+          active: result.stats?.active ?? 0,
+          blocked: result.stats?.blocked ?? 0,
       })
 
     } catch (error) {
@@ -1020,7 +1018,7 @@ export default function OwnerDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                    {membersData.filter(m => !m.blocked).length}
+                    {stats.active}
                 </div>
               </CardContent>
             </Card>
@@ -1031,7 +1029,7 @@ export default function OwnerDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                    {membersData.filter(m => m.blocked).length}
+                    {stats.blocked}
                 </div>
               </CardContent>
             </Card>

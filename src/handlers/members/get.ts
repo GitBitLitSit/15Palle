@@ -49,13 +49,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
         const skip = (page - 1) * limit;
 
-        const [members, total] = await Promise.all([
+        // Global stats for dashboard (unfiltered by blocked/search)
+        const [members, total, totalActive, totalBlocked] = await Promise.all([
             collection.find(dbQuery)
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .toArray(),
             collection.countDocuments(dbQuery),
+            collection.countDocuments({ $or: [{ blocked: false }, { blocked: { $exists: false } }] }),
+            collection.countDocuments({ blocked: true }),
         ]);
 
         return {
@@ -68,7 +71,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     page,
                     limit,
                     totalPages: Math.ceil(total / limit),
-                }
+                },
+                stats: {
+                    total: totalActive + totalBlocked,
+                    active: totalActive,
+                    blocked: totalBlocked,
+                },
             }),
         };
     } catch (error) {
