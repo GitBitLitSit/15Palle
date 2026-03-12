@@ -388,13 +388,13 @@ export default function HomePage() {
                 {t("home.barSubtitle")}
               </p>
             </div>
-            <div className="h-[280px] md:h-[400px] -mx-4 md:-mx-6">
+            <div className="h-[220px] md:h-[300px] -mx-4 md:-mx-6">
               <Marquee duration={25} gap="0.75rem" className="h-full pl-4 md:pl-6">
               {["/newbar1.webp", "/newbar2.webp", "/newbar3.webp", "/newbar4.webp", "/newbar5.webp"].map((src, i) => (
                 <button
                   key={i}
                   type="button"
-                  className="relative h-full w-[280px] md:w-[400px] flex-shrink-0 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#0a0a0a] cursor-zoom-in transition-colors"
+                  className="relative h-full w-[360px] md:w-[480px] flex-shrink-0 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#0a0a0a] cursor-zoom-in transition-colors"
                   onClick={() => openLightbox(src, t("home.galleryLabels.bar"))}
                   aria-label={t("home.lightboxOpen", "View image full size")}
                 >
@@ -403,9 +403,9 @@ export default function HomePage() {
                     alt={t("home.galleryLabels.bar")}
                     fill
                     loading={i < 2 ? "eager" : "lazy"}
-                    sizes="400px"
+                    sizes="480px"
                     quality={75}
-                    className="object-cover hover:scale-105 transition-transform duration-300"
+                    className="object-cover object-center hover:scale-105 transition-transform duration-300"
                   />
                 </button>
               ))}
