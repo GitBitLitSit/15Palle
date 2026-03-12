@@ -5,10 +5,11 @@ import { Footer } from "@/components/footer"
 import { BilliardBall } from "@/components/billiard-ball"
 import { Button } from "@/components/ui/button"
 import { ImageLightbox } from "@/components/image-lightbox"
+import { Marquee } from "@/components/ui/marquee"
 import { Clock, ChevronDown, ArrowRight, MapPin, Navigation2, Phone, Trophy } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useTranslation } from "react-i18next"
 
 type LightboxImage = { src: string; alt: string }
@@ -17,6 +18,8 @@ export default function HomePage() {
   const { t } = useTranslation()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [lightbox, setLightbox] = useState<LightboxImage | null>(null)
+  const [barInView, setBarInView] = useState(false)
+  const barSectionRef = useRef<HTMLElement>(null)
 
   const openLightbox = (src: string, alt: string) => setLightbox({ src, alt })
   const closeLightbox = () => setLightbox(null)
@@ -35,6 +38,17 @@ export default function HomePage() {
     }, 5000)
     return () => clearInterval(timer)
   }, [images.length])
+
+  useEffect(() => {
+    const el = barSectionRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([e]) => e.isIntersecting && setBarInView(true),
+      { threshold: 0.2, rootMargin: "0px 0px -50px 0px" }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   const scrollToFeatures = () => {
     document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })
@@ -270,118 +284,132 @@ export default function HomePage() {
         </section>
 
         {/* =========================================
-            THE EXPERIENCE
+            THE EXPERIENCE — Bento box gallery
            ========================================= */}
-        <section className="py-28 bg-[#050505] relative">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
-              <div className="max-w-2xl">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">{t("home.galleryTitle")}</h2>
-                <p className="text-gray-400 text-lg font-light">
-                  {t("home.gallerySubtitle", { city })}
-                </p>
-              </div>
-              {/* Button Removed per request */}
+        <section id="gallery" className="py-20 md:py-32 bg-[#050505] relative">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="mb-12 md:mb-16">
+              <h2 className="text-3xl md:text-4xl font-medium text-white tracking-tight">
+                {t("home.galleryTitle")}
+              </h2>
+              <p className="mt-3 text-white/50 text-base font-light max-w-2xl">
+                {t("home.gallerySubtitle", { city })}
+              </p>
             </div>
 
-            {/* Styled Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-auto md:h-[650px]">
-              
-              {/* Main Feature Image */}
+            {/* Bento grid — 4 cols on desktop, 2 on tablet, 1 on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 auto-rows-fr">
+              {/* Hero — large 2x2 */}
               <button
                 type="button"
-                className="group relative col-span-1 md:col-span-2 md:row-span-2 rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset"
-                onClick={() => openLightbox("/hero-focus.webp", "Racking the balls")}
+                className="group relative col-span-1 sm:col-span-2 row-span-2 rounded-2xl overflow-hidden bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset min-h-[280px] md:min-h-[320px]"
+                onClick={() => openLightbox("/hero-focus.webp", t("home.galleryLabels.gameTime"))}
                 aria-label={t("home.lightboxOpen", "View image full size")}
               >
-                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-70 transition-opacity duration-500"/>
                 <Image
                   src="/hero-focus.webp"
-                  alt="Racking the balls"
+                  alt={t("home.galleryLabels.gameTime")}
                   fill
-                  loading="lazy"
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                  quality={70}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 will-change-transform"
+                  loading="eager"
+                  sizes="(min-width: 1024px) 50vw, (min-width: 640px) 50vw, 100vw"
+                  quality={75}
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                
-                {/* Floating Label */}
-                <div className="absolute bottom-6 left-6 z-20">
-                   <div className="backdrop-blur-md bg-white/10 border border-white/10 rounded-2xl p-4 pr-8 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                      <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1">{t("home.galleryLabels.focus")}</p>
-                      <h3 className="text-white text-2xl font-bold">{t("home.galleryLabels.gameTime")}</h3>
-                   </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 z-10">
+                  <p className="text-white/70 text-xs uppercase tracking-widest">{t("home.galleryLabels.focus")}</p>
+                  <h3 className="text-white text-xl md:text-2xl font-semibold mt-1">{t("home.galleryLabels.gameTime")}</h3>
                 </div>
               </button>
 
-              {/* Top Right: Bar (Wide) */}
+              {/* Lounge — wide */}
               <button
                 type="button"
-                className="group relative col-span-1 md:col-span-2 rounded-3xl overflow-hidden border border-white/10 bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset"
-                onClick={() => openLightbox("/bar.webp", t("home.galleryLabels.bar"))}
-                aria-label={t("home.lightboxOpen", "View image full size")}
-              >
-                 <div className="absolute inset-0 z-10 bg-black/40 group-hover:bg-black/20 transition-colors duration-500"/>
-                <Image
-                  src="/bar.webp"
-                  alt={t("home.galleryLabels.bar")}
-                  fill
-                  loading="lazy"
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                  quality={70}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute bottom-4 left-4 z-20">
-                   <div className="backdrop-blur-sm bg-black/40 rounded-full px-4 py-2 border border-white/5">
-                      <p className="text-white font-medium text-sm">{t("home.galleryLabels.bar")}</p>
-                   </div>
-                </div>
-              </button>
-
-              {/* Bottom Right 1: Lounge (Square) */}
-              <button
-                type="button"
-                className="group relative rounded-3xl overflow-hidden border border-white/10 bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset"
+                className="group relative col-span-1 sm:col-span-2 rounded-2xl overflow-hidden bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset min-h-[180px] md:min-h-[200px]"
                 onClick={() => openLightbox("/lounge.webp", t("home.galleryLabels.lounge"))}
                 aria-label={t("home.lightboxOpen", "View image full size")}
               >
-                 <div className="absolute inset-0 z-10 bg-black/40 group-hover:bg-black/20 transition-colors duration-500"/>
                 <Image
                   src="/lounge.webp"
                   alt={t("home.galleryLabels.lounge")}
                   fill
                   loading="lazy"
-                  sizes="(min-width: 768px) 25vw, 100vw"
+                  sizes="(min-width: 1024px) 50vw, (min-width: 640px) 50vw, 100vw"
                   quality={72}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute bottom-4 left-4 z-20">
-                   <p className="text-white font-medium text-sm drop-shadow-md bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">{t("home.galleryLabels.lounge")}</p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-4 left-4 z-10">
+                  <h3 className="text-white text-lg font-semibold">{t("home.galleryLabels.lounge")}</h3>
                 </div>
               </button>
 
-              {/* Bottom Right 2: Membership (Square CTA) */}
+              {/* Mano — wide */}
               <button
                 type="button"
-                className="group relative rounded-3xl overflow-hidden border border-white/10 bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset"
-                onClick={() => openLightbox("/mano.webp", "Join Club")}
+                className="group relative col-span-1 sm:col-span-2 rounded-2xl overflow-hidden bg-[#0a0a0a] text-left cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-inset min-h-[180px] md:min-h-[200px]"
+                onClick={() => openLightbox("/mano.webp", t("home.galleryLabels.premiumGear"))}
                 aria-label={t("home.lightboxOpen", "View image full size")}
               >
-                <div className="absolute inset-0 z-10 bg-black/40 group-hover:bg-black/20 transition-colors duration-500"/>
-                {/* Background Image */}
                 <Image
                   src="/mano.webp"
-                  alt="Join Club"
+                  alt={t("home.galleryLabels.premiumGear")}
                   fill
                   loading="lazy"
-                  sizes="(min-width: 768px) 25vw, 100vw"
+                  sizes="(min-width: 1024px) 50vw, (min-width: 640px) 50vw, 100vw"
                   quality={75}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute bottom-4 left-4 z-20">
-                   <p className="text-white font-medium text-sm drop-shadow-md bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">{t("home.galleryLabels.premiumGear")}</p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-4 left-4 z-10">
+                  <h3 className="text-white text-lg font-semibold">{t("home.galleryLabels.premiumGear")}</h3>
                 </div>
               </button>
+
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================
+            THE BAR — seamless infinite marquee
+            Same container & alignment as L'esperienza
+           ========================================= */}
+        <section
+          id="bar"
+          ref={barSectionRef}
+          className="relative pt-8 md:pt-12 pb-20 md:pb-32 w-full overflow-hidden bg-[#050505]"
+        >
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="mb-8 md:mb-10">
+              <h2 className="text-3xl md:text-4xl font-medium text-white tracking-tight">
+                {t("home.galleryLabels.bar")}
+              </h2>
+              <p className="mt-3 text-white/50 text-base font-light max-w-2xl">
+                {t("home.barSubtitle")}
+              </p>
+            </div>
+            <div className="h-[280px] md:h-[400px] -mx-4 md:-mx-6">
+              <Marquee duration={25} gap="0.75rem" className="h-full pl-4 md:pl-6">
+              {["/newbar1.webp", "/newbar2.webp", "/newbar3.webp", "/newbar4.webp", "/newbar5.webp"].map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="relative h-full w-[280px] md:w-[400px] flex-shrink-0 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#0a0a0a] cursor-zoom-in transition-colors"
+                  onClick={() => openLightbox(src, t("home.galleryLabels.bar"))}
+                  aria-label={t("home.lightboxOpen", "View image full size")}
+                >
+                  <Image
+                    src={src}
+                    alt={t("home.galleryLabels.bar")}
+                    fill
+                    loading={i < 2 ? "eager" : "lazy"}
+                    sizes="400px"
+                    quality={75}
+                    className="object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </button>
+              ))}
+            </Marquee>
             </div>
           </div>
         </section>

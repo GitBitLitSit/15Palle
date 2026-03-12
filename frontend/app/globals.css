@@ -180,3 +180,74 @@
 .animation-delay-600 {
   animation-delay: 0.6s;
 }
+
+/* Bar rollercoaster carousel */
+@keyframes carousel-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-carousel-orbit {
+  animation: carousel-orbit 25s linear infinite;
+}
+
+/* Bar carousel item positioning - responsive radius */
+.bar-carousel-item {
+  --radius: 135px;
+  transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius))) rotate(var(--neg-angle));
+}
+@media (min-width: 768px) {
+  .bar-carousel-item {
+    --radius: 225px;
+  }
+}
+
+/* Bar full-screen Ken Burns + light sweep */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+}
+
+@keyframes light-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(200%) skewX(-15deg);
+  }
+}
+
+.animate-ken-burns {
+  animation: ken-burns 8s ease-in-out infinite alternate;
+}
+
+.animate-light-sweep {
+  animation: light-sweep 2s ease-out forwards;
+}
+
+/* Seamless infinite marquee — no jerk on loop */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 30s) linear infinite;
+}

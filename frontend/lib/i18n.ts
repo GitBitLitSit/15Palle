@@ -184,6 +184,10 @@ const resources = {
         },
         galleryTitle: "L'esperienza",
         gallerySubtitle: "Uno spazio curato per il gioco serio e serate rilassanti. Vivi la migliore atmosfera a {{city}}.",
+        galleryCardGameTime: "Dove la concentrazione incontra il gioco. Tavoli professionali, partite serie.",
+        galleryCardLounge: "Uno spazio rilassante per staccare tra una partita e l'altra o fare quattro chiacchiere.",
+        galleryCardGear: "Attrezzatura di qualità e un'atmosfera pensata per i giocatori.",
+        barSubtitle: "Drink freschi, snack e un'atmosfera curata. Il punto di ritrovo perfetto tra una partita e l'altra.",
         galleryLabels: {
           championshipTables: "Tavoli da campionato",
           bar: "Il bar",
@@ -706,6 +710,10 @@ const resources = {
         },
         galleryTitle: "The Experience",
         gallerySubtitle: "A polished space built for serious play and easy nights out. Experience the best atmosphere in {{city}}.",
+        galleryCardGameTime: "Where concentration meets play. Professional tables, serious games.",
+        galleryCardLounge: "A relaxed spot to unwind between games or catch up with friends.",
+        galleryCardGear: "Quality equipment and an atmosphere built for players.",
+        barSubtitle: "Cold drinks, snacks, and a curated atmosphere. The perfect spot between games.",
         galleryLabels: {
           championshipTables: "Championship Tables",
           bar: "The Bar",
@@ -1230,6 +1238,10 @@ const resources = {
         },
         galleryTitle: "Das Erlebnis",
         gallerySubtitle: "Ein gepflegter Ort für konzentriertes Spiel und entspannte Abende. Erlebe die beste Atmosphäre in {{city}}.",
+        galleryCardGameTime: "Wo Konzentration auf Spiel trifft. Professionelle Tische, ernsthafte Partien.",
+        galleryCardLounge: "Ein entspannter Ort zum Ausspannen zwischen den Partien oder zum Plaudern.",
+        galleryCardGear: "Hochwertige Ausrüstung und eine für Spieler geschaffene Atmosphäre.",
+        barSubtitle: "Kalte Getränke, Snacks und eine gepflegte Atmosphäre. Der perfekte Treffpunkt zwischen den Partien.",
         galleryLabels: {
           championshipTables: "Turnier-Tische",
           bar: "Die Bar",
