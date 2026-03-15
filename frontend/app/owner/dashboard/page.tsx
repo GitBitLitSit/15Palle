@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   getMembers,
+  type MemberStatusFilter,
   createMember,
   resetQrCode,
   getCheckIns,
@@ -169,7 +170,7 @@ export default function OwnerDashboard() {
 
   // --- MEMBERS STATE ---
   const [searchQuery, setSearchQuery] = useState("")
-  const [blockedFilter, setBlockedFilter] = useState<"all" | "blocked" | "active">("all")
+  const [statusFilter, setStatusFilter] = useState<MemberStatusFilter>("all")
   const [membersPage, setMembersPage] = useState(1)
   const [membersData, setMembersData] = useState<Member[]>([])
   const [totalMembers, setTotalMembers] = useState(0)
@@ -333,6 +334,8 @@ export default function OwnerDashboard() {
     lastName: "", 
     email: "", 
     blocked: false,
+    emailValid: false,
+    emailInvalid: false,
     sendEmail: true
   })
 
@@ -346,7 +349,7 @@ export default function OwnerDashboard() {
   const [memberToReset, setMemberToReset] = useState<Member | null>(null)
   const [isResettingQr, setIsResettingQr] = useState(false)
 
-  const [stats, setStats] = useState({ total: 0, blocked: 0, active: 0 })
+  const [stats, setStats] = useState({ total: 0, blocked: 0, active: 0, pending: 0, invalid: 0 })
   const LEGACY_IMPORT_STORAGE_KEY = "importPreviewState"
 
   // --- CLEANUP EFFECT ---
@@ -439,8 +442,7 @@ export default function OwnerDashboard() {
   const loadMembers = async () => {
     setIsMembersLoading(true)
     try {
-      const blocked = blockedFilter === "blocked" ? true : blockedFilter === "active" ? false : undefined
-      const result = await getMembers(membersPage, searchQuery, blocked || false, membersPageSize.toString())
+      const result = await getMembers(membersPage, searchQuery, statusFilter, membersPageSize.toString())
 
       setMembersData(result.data || [])
       setTotalMembers(result.pagination?.total || 0)
@@ -449,6 +451,8 @@ export default function OwnerDashboard() {
           total: result.stats?.total ?? result.pagination?.total ?? 0,
           active: result.stats?.active ?? 0,
           blocked: result.stats?.blocked ?? 0,
+          pending: result.stats?.pending ?? 0,
+          invalid: result.stats?.invalid ?? 0,
       })
 
     } catch (error) {
@@ -538,6 +542,8 @@ export default function OwnerDashboard() {
       lastName: member.lastName,
       email: member.email,
       blocked: member.blocked || false,
+      emailValid: member.emailValid ?? false,
+      emailInvalid: member.emailInvalid ?? false,
       sendEmail: true
     })
     setEditDialogOpen(true)
@@ -555,6 +561,8 @@ export default function OwnerDashboard() {
         lastName: editMemberForm.lastName,
         email: editMemberForm.email,
         blocked: editMemberForm.blocked,
+        emailValid: editMemberForm.emailValid,
+        emailInvalid: editMemberForm.emailInvalid,
         sendEmail: editMemberForm.sendEmail
       })
       toast({ title: t("dashboard.toasts.memberUpdatedTitle"), description: t("dashboard.toasts.memberUpdatedDesc") })
@@ -1001,7 +1009,7 @@ export default function OwnerDashboard() {
           </div>
 
           {/* Stats Cards */}
-          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Card className="border-primary/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium">{t("dashboard.stats.totalMembers")}</CardTitle>
@@ -1022,15 +1030,31 @@ export default function OwnerDashboard() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-red-200 sm:col-span-2 lg:col-span-1">
+            <Card className="border-red-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium">{t("dashboard.stats.blocked")}</CardTitle>
                 <Users className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                    {stats.blocked}
-                </div>
+                <div className="text-2xl font-bold text-red-600">{stats.blocked}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-amber-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-sm font-medium">{t("dashboard.stats.pending")}</CardTitle>
+                <Users className="h-4 w-4 text-amber-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-orange-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-sm font-medium">{t("dashboard.stats.invalid")}</CardTitle>
+                <Users className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{stats.invalid}</div>
               </CardContent>
             </Card>
           </div>
@@ -1103,13 +1127,15 @@ export default function OwnerDashboard() {
                         <Label htmlFor="status">{t("dashboard.members.statusLabel")}</Label>
                         <select
                           id="status"
-                          value={blockedFilter}
-                          onChange={(e) => { setBlockedFilter(e.target.value as SetStateAction<"all" | "blocked" | "active">); setMembersPage(1) }}
+                          value={statusFilter}
+                          onChange={(e) => { setStatusFilter(e.target.value as MemberStatusFilter); setMembersPage(1) }}
                           className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         >
                           <option value="all">{t("dashboard.members.statusAll")}</option>
                           <option value="active">{t("dashboard.members.statusActive")}</option>
+                          <option value="pending">{t("dashboard.members.statusPending")}</option>
                           <option value="blocked">{t("dashboard.members.statusBlocked")}</option>
+                          <option value="invalid">{t("dashboard.members.statusInvalid")}</option>
                         </select>
                       </div>
                     </div>
@@ -1141,6 +1167,8 @@ export default function OwnerDashboard() {
                               <TableCell>
                                 {member.blocked ? (
                                     <Badge variant="destructive">{t("dashboard.members.statusBadges.blocked")}</Badge>
+                                ) : member.emailInvalid ? (
+                                    <Badge variant="outline" className="border-amber-600 text-amber-700">{t("dashboard.members.statusBadges.invalid")}</Badge>
                                 ) : member.emailValid ? (
                                     <Badge className="bg-green-600 hover:bg-green-700">{t("dashboard.members.statusBadges.active")}</Badge>
                                 ) : (
@@ -1761,17 +1789,28 @@ export default function OwnerDashboard() {
             {/* Status Radio Buttons */}
             <div className="space-y-3 pt-2">
               <Label>{t("dashboard.dialogs.status")}</Label>
-              <div className="flex gap-6">
+              <div className="flex flex-wrap gap-4">
                 <div className="flex items-center space-x-2">
                   <input
                     type="radio"
                     id="status-active"
                     name="status"
                     className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                    checked={!editMemberForm.blocked}
-                    onChange={() => setEditMemberForm({ ...editMemberForm, blocked: false })}
+                    checked={!editMemberForm.blocked && editMemberForm.emailValid && !editMemberForm.emailInvalid}
+                    onChange={() => setEditMemberForm({ ...editMemberForm, blocked: false, emailValid: true, emailInvalid: false })}
                   />
                   <Label htmlFor="status-active" className="font-normal cursor-pointer">{t("dashboard.dialogs.active")}</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="status-pending"
+                    name="status"
+                    className="h-4 w-4 border-gray-300 focus:ring-muted-foreground"
+                    checked={!editMemberForm.blocked && !editMemberForm.emailValid && !editMemberForm.emailInvalid}
+                    onChange={() => setEditMemberForm({ ...editMemberForm, blocked: false, emailValid: false, emailInvalid: false })}
+                  />
+                  <Label htmlFor="status-pending" className="font-normal cursor-pointer">{t("dashboard.dialogs.pending")}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
@@ -1780,9 +1819,20 @@ export default function OwnerDashboard() {
                     name="status"
                     className="h-4 w-4 border-gray-300 text-red-600 focus:ring-red-600"
                     checked={editMemberForm.blocked}
-                    onChange={() => setEditMemberForm({ ...editMemberForm, blocked: true })}
+                    onChange={() => setEditMemberForm({ ...editMemberForm, blocked: true, emailInvalid: false })}
                   />
                   <Label htmlFor="status-blocked" className="font-normal cursor-pointer text-red-600">{t("dashboard.dialogs.blocked")}</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="status-invalid"
+                    name="status"
+                    className="h-4 w-4 border-gray-300 text-amber-600 focus:ring-amber-600"
+                    checked={!editMemberForm.blocked && editMemberForm.emailInvalid}
+                    onChange={() => setEditMemberForm({ ...editMemberForm, blocked: false, emailValid: false, emailInvalid: true })}
+                  />
+                  <Label htmlFor="status-invalid" className="font-normal cursor-pointer text-amber-700">{t("dashboard.dialogs.invalid")}</Label>
                 </div>
               </div>
             </div>
@@ -1898,6 +1948,8 @@ export default function OwnerDashboard() {
                       <span className="text-muted-foreground">{t("dashboard.dialogs.status")}</span>
                       {selectedMember.blocked ? (
                         <Badge variant="destructive">{t("dashboard.members.statusBadges.blocked")}</Badge>
+                      ) : selectedMember.emailInvalid ? (
+                        <Badge variant="outline" className="border-amber-600 text-amber-700">{t("dashboard.members.statusBadges.invalid")}</Badge>
                       ) : selectedMember.emailValid ? (
                         <Badge className="bg-green-600">{t("dashboard.members.statusBadges.active")}</Badge>
                       ) : (

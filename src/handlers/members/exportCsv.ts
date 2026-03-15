@@ -18,7 +18,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const db = await connectToMongo();
     const collection = db.collection<Member>("members");
 
-    const headers = ["firstName", "lastName", "email", "blocked", "emailValid", "createdAt"];
+    const headers = ["firstName", "lastName", "email", "blocked", "emailValid", "emailInvalid", "createdAt"];
     const rows: unknown[][] = [headers];
 
     const cursor = collection
@@ -31,6 +31,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             email: 1,
             blocked: 1,
             emailValid: 1,
+            emailInvalid: 1,
             createdAt: 1,
           },
         },
@@ -44,6 +45,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         m.email ?? "",
         Boolean(m.blocked),
         Boolean(m.emailValid),
+        Boolean((m as { emailInvalid?: boolean }).emailInvalid),
         m.createdAt instanceof Date ? m.createdAt.toISOString() : "",
       ]);
     }

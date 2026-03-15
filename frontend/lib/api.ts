@@ -115,12 +115,19 @@ export async function deleteMember(memberId: string) {
   return handleResponse(res)
 }
 
-export async function getMembers(page = 1, search = "", blocked = false, limit = "20") {
+export type MemberStatusFilter = "all" | "active" | "blocked" | "pending" | "invalid"
+
+export async function getMembers(
+  page = 1,
+  search = "",
+  status: MemberStatusFilter = "all",
+  limit = "20"
+) {
   const params = new URLSearchParams({
     page: page.toString(),
     limit,
+    status,
     ...(search && { search }),
-    ...(blocked && { blocked: "true" }),
   })
 
   const res = await fetch(`${API_URL}/members?${params}`, {
@@ -178,7 +185,15 @@ export async function getCheckIns(
 
 export async function updateMember(
   id: string,
-  data: { firstName: string; lastName: string; email: string; blocked: boolean; sendEmail?: boolean },
+  data: {
+    firstName: string
+    lastName: string
+    email: string
+    blocked: boolean
+    sendEmail?: boolean
+    emailValid?: boolean
+    emailInvalid?: boolean
+  },
 ) {
   const res = await fetch(`${API_URL}/members/${id}`, {
     method: "PUT",

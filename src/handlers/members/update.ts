@@ -28,7 +28,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             return errorResponse(event, 400, "MEMBER_ID_REQUIRED_IN_PATH");
         }
 
-        const { firstName, lastName, email, blocked, sendEmail } = JSON.parse(event.body || "{}");
+        const { firstName, lastName, email, blocked, sendEmail, emailValid, emailInvalid } = JSON.parse(event.body || "{}");
 
         const db = await connectToMongo();
         const collection = db.collection<Member>("members");
@@ -53,6 +53,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
                 updateFields.email = trimmedEmail;
                 updateFields.emailValid = false;
+                updateFields.emailInvalid = false;
                 emailChanged = true;
             }
         }
@@ -67,6 +68,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
         if (typeof blocked === "boolean") {
             updateFields.blocked = blocked;
+        }
+        if (typeof emailInvalid === "boolean") {
+            updateFields.emailInvalid = emailInvalid;
+        }
+        if (typeof emailValid === "boolean") {
+            updateFields.emailValid = emailValid;
         }
 
         if (Object.keys(updateFields).length > 0) {

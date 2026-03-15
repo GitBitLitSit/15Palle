@@ -24,7 +24,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         const search = rawSearch.slice(0, MAX_SEARCH_LENGTH);
         const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
         const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(queryParams.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
-        const showBlockedOnly = queryParams.blocked === "true";
+        const statusFilter = (queryParams.status || "all").toLowerCase();
 
         const db = await connectToMongo();
         const collection = db.collection<Member>("members");
@@ -42,23 +42,35 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             ];
         }
 
-        // Filter by blocked status
-        if (showBlockedOnly) {
+        // Filter by status: active | blocked | pending | invalid | all
+        const notBlocked = { $or: [{ blocked: false }, { blocked: { $exists: false } }] };
+        const notInvalid = { $or: [{ emailInvalid: false }, { emailInvalid: { $exists: false } }] };
+        if (statusFilter === "active") {
+            dbQuery = { ...dbQuery, $and: [notBlocked, notInvalid, { emailValid: true }] };
+        } else if (statusFilter === "blocked") {
             dbQuery.blocked = true;
+        } else if (statusFilter === "pending") {
+            dbQuery = { ...dbQuery, $and: [notBlocked, notInvalid, { emailValid: false }] };
+        } else if (statusFilter === "invalid") {
+            dbQuery.emailInvalid = true;
         }
 
         const skip = (page - 1) * limit;
 
-        // Global stats for dashboard (unfiltered by blocked/search)
-        const [members, total, totalActive, totalBlocked] = await Promise.all([
+        // Global stats (unfiltered by status/search)
+        const activeQuery = { $and: [notBlocked, notInvalid, { emailValid: true }] };
+        const pendingQuery = { $and: [notBlocked, notInvalid, { emailValid: false }] };
+        const [members, total, totalActive, totalBlocked, totalPending, totalInvalid] = await Promise.all([
             collection.find(dbQuery)
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .toArray(),
             collection.countDocuments(dbQuery),
-            collection.countDocuments({ $or: [{ blocked: false }, { blocked: { $exists: false } }] }),
+            collection.countDocuments(activeQuery),
             collection.countDocuments({ blocked: true }),
+            collection.countDocuments(pendingQuery),
+            collection.countDocuments({ emailInvalid: true }),
         ]);
 
         return {
@@ -73,9 +85,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     totalPages: Math.ceil(total / limit),
                 },
                 stats: {
-                    total: totalActive + totalBlocked,
+                    total: totalActive + totalBlocked + totalPending + totalInvalid,
                     active: totalActive,
                     blocked: totalBlocked,
+                    pending: totalPending,
+                    invalid: totalInvalid,
                 },
             }),
         };

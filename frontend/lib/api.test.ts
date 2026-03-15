@@ -78,7 +78,7 @@ describe("api client", () => {
       ok: true,
       json: () => Promise.resolve({ success: true, data: [], pagination: { total: 0, page: 2, limit: 10 } }),
     });
-    await getMembers(2, "john", true, "10");
+    await getMembers(2, "john", "blocked", "10");
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("page=2"),
       expect.any(Object)
@@ -88,7 +88,7 @@ describe("api client", () => {
       expect.any(Object)
     );
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("blocked=true"),
+      expect.stringContaining("status=blocked"),
       expect.any(Object)
     );
   });

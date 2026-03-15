@@ -7,6 +7,8 @@ export interface Member {
   blocked: boolean
   qrUuid: string
   emailValid: boolean
+  /** True when email send failed (invalid address). Do not send again. */
+  emailInvalid?: boolean
 }
 
 export interface CheckInEvent {

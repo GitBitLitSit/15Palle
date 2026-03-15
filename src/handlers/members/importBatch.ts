@@ -12,6 +12,7 @@ type ImportMemberRow = {
   email?: unknown;
   blocked?: unknown;
   emailValid?: unknown;
+  emailInvalid?: unknown;
   createdAt?: unknown;
 };
 
@@ -83,6 +84,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
       const blocked = parseBooleanLoose(r?.blocked) ?? false;
       const emailValid = parseBooleanLoose(r?.emailValid) ?? false;
+      const emailInvalid = parseBooleanLoose(r?.emailInvalid) ?? false;
       const createdAt = parseDateLoose(r?.createdAt) ?? new Date();
 
       const doc: Member = {
@@ -93,6 +95,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         blocked,
         qrUuid: crypto.randomUUID(),
         emailValid,
+        emailInvalid,
       };
 
       // Upsert with $setOnInsert guarantees:

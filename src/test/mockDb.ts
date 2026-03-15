@@ -22,6 +22,19 @@ export interface MockCursor<T> {
   collation: (opts: any) => MockCursor<T>;
 }
 
+function matchDoc(d: any, clause: any): boolean {
+  if (!clause || typeof clause !== "object") return true;
+  if (clause.$or) return (clause.$or as any[]).some((c: any) => matchDoc(d, c));
+  for (const [key, val] of Object.entries(clause)) {
+    if (key === "$or") continue;
+    const docVal = d[key];
+    if (val !== null && typeof val === "object" && (val as any).$exists === false) {
+      if (docVal !== undefined) return false;
+    } else if (docVal !== val) return false;
+  }
+  return true;
+}
+
 function createMockCursor<T>(data: T[], filter?: any): MockCursor<T> {
   let result = filter && filter.email?.$in
     ? data.filter((d: any) => filter.email.$in.includes((d as any).email))
@@ -84,6 +97,12 @@ function createMockCollection<T extends { _id?: any }>(name: string): MockCollec
     find(filter: any = {}) {
       let result = [..._data];
       if (filter && Object.keys(filter).length > 0) {
+        if (filter.$and) {
+          const clauses = filter.$and as Array<Record<string, unknown>>;
+          result = result.filter((d: any) =>
+            clauses.every((clause: any) => matchDoc(d, clause))
+          );
+        }
         if (filter.$or) {
           const or = filter.$or as Array<Record<string, unknown>>;
           const regex = or.find((x: any) => x.email || x.firstName || x.lastName) as any;
@@ -97,6 +116,8 @@ function createMockCollection<T extends { _id?: any }>(name: string): MockCollec
           }
         }
         if (filter.blocked === true) result = result.filter((d: any) => d.blocked === true);
+        if (filter.emailValid !== undefined) result = result.filter((d: any) => d.emailValid === filter.emailValid);
+        if (filter.emailInvalid === true) result = result.filter((d: any) => d.emailInvalid === true);
         if (filter.email?.$in) {
           const emails = new Set((filter.email.$in as string[]).map((e: string) => e.toLowerCase()));
           result = result.filter((d: any) => emails.has((d as any).email?.toLowerCase()));

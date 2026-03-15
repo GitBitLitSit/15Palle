@@ -7,6 +7,8 @@ export interface Member {
     blocked: boolean;
     qrUuid: string;
     emailValid: boolean;
+    /** True when we tried to send email and it failed (bounce, invalid address). Never send again. */
+    emailInvalid?: boolean;
 }
 
 export interface CheckIn {

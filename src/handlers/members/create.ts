@@ -45,6 +45,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             blocked: false,
             qrUuid: qrUuid,
             emailValid: false,
+            emailInvalid: false,
         }
 
         const result = await collection.insertOne(newMember);

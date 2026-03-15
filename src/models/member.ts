@@ -9,6 +9,7 @@ const memberSchema = new Schema(
     blocked: { type: Boolean, default: false },
     qrUuid: { type: String, required: true },
     emailValid: { type: Boolean, default: false },
+    emailInvalid: { type: Boolean, default: false },
   },
   {
     collection: "members",

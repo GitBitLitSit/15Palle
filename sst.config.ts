@@ -18,8 +18,18 @@ export default $config({
 
   async run() {
     const stageToken = $app.stage.replace(/[^a-zA-Z0-9-]/g, "-").slice(0, 24);
+    // Production uses this suffix so we update the existing Lambdas (named with PC suffix), not create new ones
+    const productionSuffix = process.env.LAMBDA_NAME_SUFFIX || "obenatlapnatha";
     const lambdaName = (base: string) =>
-      $app.stage === "production" ? base : `${base}-${stageToken}`.slice(0, 64);
+      $app.stage === "production"
+        ? `${base}-${productionSuffix}`.slice(0, 64)
+        : `${base}-${stageToken}`.slice(0, 64);
+    // Import existing Lambdas so deploy updates them instead of creating (remove opts.import after first successful deploy)
+    const importTransform = (fnBase: string) => ({
+      function: (_args: unknown, opts: { import?: string }) => {
+        opts.import = lambdaName(fnBase);
+      },
+    });
     const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
       .split(",")
       .map((origin) => origin.trim())
@@ -56,6 +66,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleAdminLoginFunction"),
+      transform: importTransform("15PalleAdminLoginFunction"),
     });
 
     api.route("GET /members", {
@@ -68,6 +79,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleGetMembersFunction"),
+      transform: importTransform("15PalleGetMembersFunction"),
     })
 
     api.route("POST /members", {
@@ -82,6 +94,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleCreateMemberFunction"),
+      transform: importTransform("15PalleCreateMemberFunction"),
     });
 
     api.route("GET /members/export", {
@@ -94,6 +107,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleExportMembersFunction"),
+      transform: importTransform("15PalleExportMembersFunction"),
     });
 
     api.route("POST /members/import", {
@@ -106,6 +120,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleImportMembersFunction"),
+      transform: importTransform("15PalleImportMembersFunction"),
     });
 
     api.route("POST /members/import/batch", {
@@ -118,6 +133,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleImportMembersBatchFunction"),
+      transform: importTransform("15PalleImportMembersBatchFunction"),
     });
 
     api.route("POST /check-existing-users", {
@@ -130,6 +146,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleCheckExistingUsersFunction"),
+      transform: importTransform("15PalleCheckExistingUsersFunction"),
     });
 
     api.route("POST /bulk-create-users", {
@@ -144,6 +161,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleBulkCreateUsersFunction"),
+      transform: importTransform("15PalleBulkCreateUsersFunction"),
     });
 
 
@@ -159,6 +177,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleUpdateMemberFunction"),
+      transform: importTransform("15PalleUpdateMemberFunction"),
     })
 
     api.route("DELETE /members/{id}", {
@@ -171,6 +190,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleDeleteMemberFunction"),
+      transform: importTransform("15PalleDeleteMemberFunction"),
     })
 
     api.route("POST /members/reset-qrcode", {
@@ -185,6 +205,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleResetMemberQrCodeFunction"),
+      transform: importTransform("15PalleResetMemberQrCodeFunction"),
     });
 
     api.route("POST /members/recover", {
@@ -198,6 +219,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleRecoverMemberFunction"),
+      transform: importTransform("15PalleRecoverMemberFunction"),
     });
 
     api.route("GET /auth/check-ins", {
@@ -210,6 +232,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleGetCheckInsFunction"),
+      transform: importTransform("15PalleGetCheckInsFunction"),
     });
 
     api.route("POST /auth/request-verification", {
@@ -223,6 +246,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleRequestVerificationFunction"),
+      transform: importTransform("15PalleRequestVerificationFunction"),
     })
 
     const webSocket = new sst.aws.ApiGatewayWebSocket("RealtimeApi");
@@ -236,6 +260,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleWebSocketConnectFunction"),
+      transform: importTransform("15PalleWebSocketConnectFunction"),
     });
 
     webSocket.route("$disconnect", {
@@ -247,6 +272,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleWebSocketDisconnectFunction"),
+      transform: importTransform("15PalleWebSocketDisconnectFunction"),
     });
 
     api.route("POST /check-in", {
@@ -267,6 +293,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleCheckInFunction"),
+      transform: importTransform("15PalleCheckInFunction"),
     })
     
     /*const site = new sst.aws.Nextjs("MyWeb", {

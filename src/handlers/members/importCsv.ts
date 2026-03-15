@@ -53,7 +53,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const header = hasHeader
       ? firstRow
-      : ["firstname", "lastname", "email", "blocked", "emailvalid", "createdat"];
+      : ["firstname", "lastname", "email", "blocked", "emailvalid", "emailinvalid", "createdat"];
     const dataRows = hasHeader ? rows.slice(1) : rows;
 
     const idx = (name: string) => header.findIndex((h) => h === normalizeHeader(name));
@@ -62,6 +62,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const emailIdx = header.findIndex((h) => h === "email" || h === "mail" || h === "e-mail");
     const blockedIdx = idx("blocked");
     const emailValidIdx = idx("emailvalid");
+    const emailInvalidIdx = idx("emailinvalid");
     const createdAtIdx = idx("createdat");
 
     if (firstNameIdx < 0 || lastNameIdx < 0 || emailIdx < 0) {
@@ -103,6 +104,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
       const blocked = blockedIdx >= 0 ? parseBoolean(String(row[blockedIdx] ?? "")) : undefined;
       const emailValid = emailValidIdx >= 0 ? parseBoolean(String(row[emailValidIdx] ?? "")) : undefined;
+      const emailInvalid = emailInvalidIdx >= 0 ? parseBoolean(String(row[emailInvalidIdx] ?? "")) : undefined;
 
       let createdAt: Date | undefined;
       if (createdAtIdx >= 0) {
@@ -113,7 +115,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         }
       }
 
-      candidates.push({ firstName, lastName, email, blocked, emailValid, createdAt });
+      candidates.push({ firstName, lastName, email, blocked, emailValid, emailInvalid, createdAt });
     }
 
     if (candidates.length === 0) {
@@ -165,6 +167,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         blocked: c.blocked ?? false,
         qrUuid: crypto.randomUUID(),
         emailValid: c.emailValid ?? false,
+        emailInvalid: c.emailInvalid ?? false,
       });
     }
 
