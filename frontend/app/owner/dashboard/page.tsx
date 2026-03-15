@@ -471,7 +471,7 @@ export default function OwnerDashboard() {
     if (activeTab === "members") {
       loadMembers()
     }
-  }, [searchQuery, blockedFilter, membersPage, activeTab])
+  }, [searchQuery, statusFilter, membersPage, activeTab])
 
   // --- LOAD CHECK-INS ---
   const loadCheckIns = useCallback(async () => {
