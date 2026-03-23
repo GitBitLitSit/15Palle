@@ -319,7 +319,13 @@ export default function OwnerDashboard() {
   const [isImporting, setIsImporting] = useState(false)
   const [importStep, setImportStep] = useState<"idle" | "parsing" | "checking" | "review" | "creating" | "done">("idle")
   const [importSummary, setImportSummary] = useState<{ created: number; invalid: number; duplicates: number } | null>(null)
-  const [importCounts, setImportCounts] = useState<{ invalid: number; duplicates: number } | null>(null)
+  const [importCounts, setImportCounts] = useState<{
+    invalid: number
+    duplicates: number
+    skippedExisting: number
+    totalIgnored: number
+    totalRows: number
+  } | null>(null)
   const [importPreviewRows, setImportPreviewRows] = useState<Array<{ firstName: string; lastName: string; email: string; sendEmail: boolean }>>([])
   const [importPreviewPage, setImportPreviewPage] = useState(1)
   const importPreviewPageSize = 12
@@ -778,6 +784,7 @@ export default function OwnerDashboard() {
       .replace(/ü/g, "u")
       .replace(/ß/g, "ss")
       .replace(/[\s_\-]+/g, "")
+      .replace(/[^a-z0-9]/g, "")
       .trim()
 
   const handleImportExcel = async () => {
@@ -796,34 +803,102 @@ export default function OwnerDashboard() {
       }
 
       const worksheet = workbook.Sheets[sheetName]
-      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" })
+      // Convert the sheet to a 2D array so we can find the real header row even when clients add text
+      // above the table (e.g. "SOCI ...", blank lines, notes, etc.).
+      const aoa = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: "" }) as unknown[][]
 
-      // Map normalized column headers to firstName/lastName/email (many title options in EN/IT/DE).
-      // Support fullName column: "First Last" split on first space when first/last are missing.
-      const normalizedRows = rawRows.map((row) => {
-        const extracted: Record<string, string> = {
-          firstName: "",
-          lastName: "",
-          email: "",
-          fullName: "",
-          fullNameLastFirst: "",
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+      const fieldFromNormalizedKey = (
+        normalizedKey: string,
+      ): (typeof EXCEL_HEADER_TO_FIELD)[keyof typeof EXCEL_HEADER_TO_FIELD] | null => {
+        const direct = EXCEL_HEADER_TO_FIELD[normalizedKey]
+        if (direct) return direct
+
+        // Fallback for weird email column titles:
+        // treat headers containing "email"/"mail" as the email address ONLY when they don't look like
+        // "EmailValid"/"EmailInvalid" helper columns.
+        if (
+          (normalizedKey.includes("email") || normalizedKey.includes("mail")) &&
+          !normalizedKey.includes("valid") &&
+          !normalizedKey.includes("invalid")
+        ) {
+          return "email"
         }
-        Object.entries(row).forEach(([key, value]) => {
-          const normalizedKey = normalizeExcelHeader(key)
-          let field = EXCEL_HEADER_TO_FIELD[normalizedKey]
-          // Fallback for weird email column titles: any header containing "email" or "mail"
-          if (!field && (normalizedKey.includes("email") || normalizedKey.includes("mail"))) {
-            field = "email"
-          }
-          if (!field) return
-          const rawStr = String(value ?? "").trim()
-          extracted[field] = field === "email" ? rawStr.toLowerCase() : rawStr
-        })
-        let firstName = String(extracted.firstName ?? "").trim()
-        let lastName = String(extracted.lastName ?? "").trim()
-        const fullName = String(extracted.fullName ?? "").trim()
-        const fullNameLastFirst = String(extracted.fullNameLastFirst ?? "").trim()
-        // "Cognome e Nome" style: first word = lastName, rest = firstName (e.g. "AFFANE OTMAN" → Otman, Affane)
+
+        return null
+      }
+
+      const maxHeaderScanRows = Math.min(100, aoa.length)
+      let bestHeaderRowIndex = 0
+      let bestScore = -1
+
+      const scoreHeaderRow = (cells: unknown[]) => {
+        let hasEmail = false
+        let nameScore = 0
+
+        for (const cell of cells) {
+          const normalizedKey = normalizeExcelHeader(String(cell ?? ""))
+          if (!normalizedKey) continue
+
+          const field = fieldFromNormalizedKey(normalizedKey)
+          if (!field) continue
+
+          if (field === "email") hasEmail = true
+          if (field === "firstName" || field === "lastName") nameScore += 1
+          if (field === "fullName" || field === "fullNameLastFirst") nameScore += 2
+        }
+
+        // Weight email higher because it's the most important column.
+        return (hasEmail ? 3 : 0) + nameScore
+      }
+
+      for (let i = 0; i < maxHeaderScanRows; i++) {
+        const cells = aoa[i] ?? []
+        const score = scoreHeaderRow(cells)
+        if (score > bestScore) {
+          bestScore = score
+          bestHeaderRowIndex = i
+        }
+      }
+
+      // If we didn't find a confident header, fall back to the first row.
+      if (bestScore < 3) bestHeaderRowIndex = 0
+
+      const headerCells = (aoa[bestHeaderRowIndex] ?? []) as unknown[]
+      let firstNameIdx = -1
+      let lastNameIdx = -1
+      let emailIdx = -1
+      let fullNameIdx = -1
+      let fullNameLastFirstIdx = -1
+
+      for (let col = 0; col < headerCells.length; col++) {
+        const normalizedKey = normalizeExcelHeader(String(headerCells[col] ?? ""))
+        if (!normalizedKey) continue
+
+        const field = fieldFromNormalizedKey(normalizedKey)
+        if (!field) continue
+
+        if (field === "firstName" && firstNameIdx < 0) firstNameIdx = col
+        else if (field === "lastName" && lastNameIdx < 0) lastNameIdx = col
+        else if (field === "email" && emailIdx < 0) emailIdx = col
+        else if (field === "fullName" && fullNameIdx < 0) fullNameIdx = col
+        else if (field === "fullNameLastFirst" && fullNameLastFirstIdx < 0) fullNameLastFirstIdx = col
+      }
+
+      const normalizedRows: Array<{ firstName: string; lastName: string; email: string }> = []
+      for (let r = bestHeaderRowIndex + 1; r < aoa.length; r++) {
+        const cells = (aoa[r] ?? []) as unknown[]
+        const hasAnyValue = cells.some((c) => String(c ?? "").trim() !== "")
+        if (!hasAnyValue) continue
+
+        let firstName = firstNameIdx >= 0 ? String(cells[firstNameIdx] ?? "").trim() : ""
+        let lastName = lastNameIdx >= 0 ? String(cells[lastNameIdx] ?? "").trim() : ""
+
+        const fullName = fullNameIdx >= 0 ? String(cells[fullNameIdx] ?? "").trim() : ""
+        const fullNameLastFirst = fullNameLastFirstIdx >= 0 ? String(cells[fullNameLastFirstIdx] ?? "").trim() : ""
+
+        // "Cognome e Nome" style: first word = lastName, rest = firstName
         if (fullNameLastFirst) {
           const parts = fullNameLastFirst.split(/\s+/).filter(Boolean)
           if (parts.length >= 2) {
@@ -833,9 +908,10 @@ export default function OwnerDashboard() {
             if (!lastName) lastName = parts[0] ?? ""
           }
         }
+
+        // Full name style: last word = lastName, everything before = firstName
         if (fullName) {
           const parts = fullName.split(/\s+/).filter(Boolean)
-          // Last word = lastName, everything before = firstName (supports multiple first names e.g. "John Paul Smith")
           if (parts.length >= 2) {
             if (!firstName) firstName = parts.slice(0, -1).join(" ")
             if (!lastName) lastName = parts[parts.length - 1] ?? ""
@@ -843,14 +919,11 @@ export default function OwnerDashboard() {
             if (!firstName) firstName = parts[0] ?? ""
           }
         }
-        return {
-          firstName,
-          lastName,
-          email: String(extracted.email ?? "").toLowerCase(),
-        }
-      })
 
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        const email = emailIdx >= 0 ? String(cells[emailIdx] ?? "").trim().toLowerCase() : ""
+
+        normalizedRows.push({ firstName, lastName, email })
+      }
       // Skip rows without a valid email; require firstName, lastName, and valid email
       const validRows = normalizedRows.filter(
         (row) =>
@@ -871,7 +944,13 @@ export default function OwnerDashboard() {
       if (uniqueRows.length === 0) {
         setImportSummary({ created: 0, invalid: invalidRows, duplicates: duplicateRows })
         setImportStep("done")
-        setImportCounts({ invalid: invalidRows, duplicates: duplicateRows })
+        setImportCounts({
+          invalid: invalidRows,
+          duplicates: duplicateRows,
+          skippedExisting: 0,
+          totalIgnored: invalidRows + duplicateRows,
+          totalRows: normalizedRows.length,
+        })
         toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.toasts.failedImport"), variant: "destructive" })
         return
       }
@@ -894,7 +973,15 @@ export default function OwnerDashboard() {
       // Step B: client-side set difference to keep only new users.
       const newUsers = uniqueRows.filter((row) => !existingSet.has(row.email))
 
-      setImportCounts({ invalid: invalidRows, duplicates: duplicateRows })
+      const skippedExisting = uniqueRows.length - newUsers.length
+      const totalIgnored = invalidRows + duplicateRows + skippedExisting
+      setImportCounts({
+        invalid: invalidRows,
+        duplicates: duplicateRows,
+        skippedExisting,
+        totalIgnored,
+        totalRows: normalizedRows.length,
+      })
 
       if (newUsers.length === 0) {
         setImportSummary({ created: 0, invalid: invalidRows, duplicates: duplicateRows })
@@ -1503,6 +1590,12 @@ export default function OwnerDashboard() {
                               {importSummary.duplicates > 0 && (
                                 <li>{t("dashboard.dialogs.importDuplicates", { count: importSummary.duplicates })}</li>
                               )}
+                              {importCounts && importCounts.skippedExisting > 0 && (
+                                <li>{t("dashboard.dialogs.importSkippedExisting", { count: importCounts.skippedExisting })}</li>
+                              )}
+                              {importCounts && importCounts.totalIgnored > 0 && (
+                                <li>{t("dashboard.dialogs.importIgnoredTotal", { count: importCounts.totalIgnored })}</li>
+                              )}
                             </ul>
                           </div>
                         )}
@@ -1519,6 +1612,16 @@ export default function OwnerDashboard() {
                             {t("dashboard.dialogs.importInvalid", { count: importCounts?.invalid ?? 0 })}
                             {importCounts && importCounts.duplicates > 0 ? ` · ${t("dashboard.dialogs.importDuplicates", { count: importCounts.duplicates })}` : ""}
                           </p>
+                          {importCounts && (importCounts.skippedExisting > 0 || importCounts.totalIgnored > 0) && (
+                            <p className="text-xs text-muted-foreground">
+                              {importCounts.skippedExisting > 0
+                                ? t("dashboard.dialogs.importSkippedExisting", { count: importCounts.skippedExisting })
+                                : null}
+                              {importCounts.totalIgnored > 0
+                                ? ` · ${t("dashboard.dialogs.importIgnoredTotal", { count: importCounts.totalIgnored })}`
+                                : null}
+                            </p>
+                          )}
                         </div>
 
                         <div className="rounded-md border bg-background">
