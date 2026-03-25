@@ -344,6 +344,7 @@ const resources = {
         subtitle: "Gestisci i membri del club",
         websocketPrefix: "WebSocket:",
         realtimeConnected: "✓ Aggiornamenti in tempo reale connessi",
+        realtimeDisconnected: "Tempo reale: non connesso (tentativo di riconnessione…)",
         stats: {
           totalMembers: "Totale membri",
           active: "Attivi",
@@ -879,6 +880,7 @@ const resources = {
         subtitle: "Manage club members",
         websocketPrefix: "WebSocket:",
         realtimeConnected: "✓ Real-time updates connected",
+        realtimeDisconnected: "Real-time: not connected (reconnecting…)",
         stats: {
           totalMembers: "Total Members",
           active: "Active",
@@ -1414,6 +1416,7 @@ const resources = {
         subtitle: "Mitglieder verwalten",
         websocketPrefix: "WebSocket:",
         realtimeConnected: "✓ Echtzeit-Updates verbunden",
+        realtimeDisconnected: "Echtzeit: nicht verbunden (verbindet erneut…)",
         stats: {
           totalMembers: "Mitglieder gesamt",
           active: "Aktiv",

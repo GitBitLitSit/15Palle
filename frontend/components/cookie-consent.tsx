@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -12,12 +13,15 @@ import {
 } from "@/lib/cookie-consent"
 
 export function CookieConsent() {
+  const pathname = usePathname()
   const { t } = useTranslation()
+  const isKioskRoute = pathname?.startsWith("/kiosk") || pathname?.startsWith("/counter")
   const [isOpen, setIsOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [preferences, setPreferences] = useState<CookieConsentPreferences>(DEFAULT_PREFERENCES)
 
   useEffect(() => {
+    if (isKioskRoute) return
     const stored = readStoredConsent()
     if (stored) {
       setPreferences(stored.preferences)
@@ -25,7 +29,7 @@ export function CookieConsent() {
     } else {
       setIsOpen(true)
     }
-  }, [])
+  }, [isKioskRoute])
 
   const acceptAll = () => {
     const next = { necessary: true, analytics: true, marketing: true }
@@ -48,6 +52,8 @@ export function CookieConsent() {
     setIsOpen(false)
     setExpanded(false)
   }
+
+  if (isKioskRoute) return null
 
   if (!isOpen) return null
 

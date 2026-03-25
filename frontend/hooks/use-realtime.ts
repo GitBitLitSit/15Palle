@@ -8,7 +8,14 @@ type RealtimeErrorCode = "MISSING_WEBSOCKET_URL" | "CONNECTION_ERROR"
 const isDev = typeof process !== "undefined" && process.env.NODE_ENV === "development"
 
 export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
+  const onCheckInRef = useRef(onCheckIn)
+  onCheckInRef.current = onCheckIn
+
   const wsRef = useRef<WebSocket | null>(null)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const attemptRef = useRef(0)
+  const shouldReconnectRef = useRef(true)
+
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<RealtimeErrorCode | null>(null)
 
@@ -21,37 +28,95 @@ export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
       return
     }
 
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
+    shouldReconnectRef.current = true
 
-    ws.onopen = () => {
-      setIsConnected(true)
-      setError(null)
-    }
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data) as CheckInEvent
-        if (data.type === "NEW_CHECKIN") {
-          onCheckIn(data)
-        }
-      } catch {
-        if (isDev) console.error("Failed to parse WebSocket message")
+    const clearReconnectTimer = () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
       }
     }
 
-    ws.onerror = () => {
-      setError("CONNECTION_ERROR")
+    const scheduleReconnect = () => {
+      if (!shouldReconnectRef.current) return
+      clearReconnectTimer()
+      const attempt = attemptRef.current
+      const delayMs = Math.min(30_000, 1000 * 2 ** Math.min(attempt, 5))
+      attemptRef.current = attempt + 1
+      reconnectTimerRef.current = setTimeout(() => connect(), delayMs)
     }
 
-    ws.onclose = () => {
-      setIsConnected(false)
+    const connect = () => {
+      if (!shouldReconnectRef.current) return
+      clearReconnectTimer()
+      try {
+        wsRef.current?.close()
+      } catch {
+        /* ignore */
+      }
+
+      if (isDev) {
+        const u = wsUrl.trim()
+        const looksBroken =
+          /\/$/i.test(u) ||
+          /\/default$/i.test(u) ||
+          (/\/\$?$/i.test(u) && !u.includes("%24"))
+        if (looksBroken && !u.includes("%24")) {
+          console.error(
+            "[realtime] WebSocket URL may be wrong: Next.js expands `$` in `.env.local`. Use `/%24default` in the URL (not `/$default`). Current value:",
+            u,
+          )
+        } else {
+          console.info("[realtime] Connecting to", u)
+        }
+      }
+
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        attemptRef.current = 0
+        setIsConnected(true)
+        setError(null)
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as CheckInEvent
+          if (data.type === "NEW_CHECKIN") {
+            onCheckInRef.current(data)
+          }
+        } catch {
+          if (isDev) console.error("Failed to parse WebSocket message")
+        }
+      }
+
+      ws.onerror = () => {
+        setError("CONNECTION_ERROR")
+      }
+
+      ws.onclose = () => {
+        setIsConnected(false)
+        wsRef.current = null
+        if (shouldReconnectRef.current) {
+          scheduleReconnect()
+        }
+      }
     }
+
+    connect()
 
     return () => {
-      ws.close()
+      shouldReconnectRef.current = false
+      clearReconnectTimer()
+      try {
+        wsRef.current?.close()
+      } catch {
+        /* ignore */
+      }
+      wsRef.current = null
     }
-  }, [onCheckIn])
+  }, [])
 
   return { isConnected, error }
 }
