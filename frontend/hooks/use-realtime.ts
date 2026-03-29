@@ -1,13 +1,16 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { CheckInEvent } from "@/lib/types"
 
 type RealtimeErrorCode = "MISSING_WEBSOCKET_URL" | "CONNECTION_ERROR"
+type UseRealtimeOptions = { wsUrl?: string }
 
 const isDev = typeof process !== "undefined" && process.env.NODE_ENV === "development"
 
-export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
+export function useRealtimeCheckIns<TEvent extends { type: string }>(
+  onCheckIn: (event: TEvent) => void,
+  options?: UseRealtimeOptions,
+) {
   const onCheckInRef = useRef(onCheckIn)
   onCheckInRef.current = onCheckIn
 
@@ -20,7 +23,7 @@ export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
   const [error, setError] = useState<RealtimeErrorCode | null>(null)
 
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_API_URL
+    const wsUrl = options?.wsUrl || process.env.NEXT_PUBLIC_WEBSOCKET_API_URL
 
     if (!wsUrl) {
       if (isDev) console.error("WebSocket URL is not configured")
@@ -82,7 +85,7 @@ export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data) as CheckInEvent
+          const data = JSON.parse(event.data) as TEvent
           if (data.type === "NEW_CHECKIN") {
             onCheckInRef.current(data)
           }
@@ -116,7 +119,7 @@ export function useRealtimeCheckIns(onCheckIn: (event: CheckInEvent) => void) {
       }
       wsRef.current = null
     }
-  }, [])
+  }, [options?.wsUrl])
 
   return { isConnected, error }
 }

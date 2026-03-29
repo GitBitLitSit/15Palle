@@ -10,6 +10,11 @@ declare module "sst" {
       "type": "sst.aws.ApiGatewayV2"
       "url": string
     }
+    "KioskRealtimeApi": {
+      "managementEndpoint": string
+      "type": "sst.aws.ApiGatewayWebSocket"
+      "url": string
+    }
     "RealtimeApi": {
       "managementEndpoint": string
       "type": "sst.aws.ApiGatewayWebSocket"

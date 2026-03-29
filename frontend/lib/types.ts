@@ -21,6 +21,16 @@ export interface CheckInEvent {
   checkInTime?: string
 }
 
+export interface KioskCheckInEvent {
+  type: "NEW_CHECKIN"
+  hasMember: boolean
+  warning?: string | null
+  warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN" | null
+  warningParams?: Record<string, unknown>
+  timestamp?: string
+  checkInTime?: string
+}
+
 export interface DashboardStats {
   total: number
   blocked: number

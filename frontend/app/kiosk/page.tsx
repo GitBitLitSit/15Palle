@@ -2,19 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import type { CheckInEvent } from "@/lib/types"
+import type { KioskCheckInEvent } from "@/lib/types"
 import { useRealtimeCheckIns } from "@/hooks/use-realtime"
 
-const STORAGE_KEY = "kiosk:last-check-in:v1"
-
-type KioskCheckInEvent = {
-  type: "NEW_CHECKIN"
-  member: { firstName: string; lastName: string } | null
-  warning?: string | null
-  warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN" | null
-  timestamp?: string
-  checkInTime?: string
-}
+const KIOSK_VISIBILITY_MS = 15_000
 
 function parseEventDate(event: KioskCheckInEvent | null): Date | null {
   const raw = event?.timestamp ?? event?.checkInTime
@@ -42,37 +33,11 @@ export default function KioskPage() {
 
   const [lastCheckIn, setLastCheckIn] = useState<KioskCheckInEvent | null>(null)
   const [pulse, setPulse] = useState<"success" | "error" | null>(null)
+  const [expiresAtMs, setExpiresAtMs] = useState<number | null>(null)
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as KioskCheckInEvent
-      setLastCheckIn(parsed)
-    } catch {
-      // Ignore localStorage parse errors
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!lastCheckIn) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(lastCheckIn))
-    } catch {
-      // LocalStorage might be disabled; kiosk still works via websocket.
-    }
-  }, [lastCheckIn])
-
-  const handleNewCheckIn = useCallback((event: CheckInEvent) => {
-    const displayEvent: KioskCheckInEvent = {
-      type: "NEW_CHECKIN",
-      member: event.member ? { firstName: event.member.firstName, lastName: event.member.lastName } : null,
-      warning: event.warning ?? null,
-      warningCode: event.warningCode ?? null,
-      timestamp: event.timestamp,
-      checkInTime: event.checkInTime,
-    }
-    setLastCheckIn(displayEvent)
+  const handleNewCheckIn = useCallback((event: KioskCheckInEvent) => {
+    setLastCheckIn(event)
+    setExpiresAtMs(Date.now() + KIOSK_VISIBILITY_MS)
     setPulse(() => {
       const code = event.warningCode ?? null
       if (code === "INVALID_QR" || code === "MEMBER_BLOCKED" || code === "SCANNED_TOO_OFTEN") return "error"
@@ -82,42 +47,42 @@ export default function KioskPage() {
     window.setTimeout(() => setPulse(null), 1400)
   }, [])
 
-  const { isConnected, error: wsError } = useRealtimeCheckIns(handleNewCheckIn)
+  useEffect(() => {
+    if (!expiresAtMs || !lastCheckIn) return
+    const remainingMs = Math.max(0, expiresAtMs - Date.now())
+    const timeoutId = window.setTimeout(() => {
+      setLastCheckIn(null)
+      setExpiresAtMs(null)
+    }, remainingMs)
+    return () => window.clearTimeout(timeoutId)
+  }, [expiresAtMs, lastCheckIn])
+
+  const { isConnected, error: wsError } = useRealtimeCheckIns(handleNewCheckIn, {
+    wsUrl: process.env.NEXT_PUBLIC_KIOSK_WEBSOCKET_API_URL || process.env.NEXT_PUBLIC_WEBSOCKET_API_URL,
+  })
 
   const status = useMemo(() => {
     const code = lastCheckIn?.warningCode ?? null
     const denied = code === "INVALID_QR" || code === "MEMBER_BLOCKED" || code === "SCANNED_TOO_OFTEN"
 
-    const memberName = lastCheckIn?.member
-      ? `${lastCheckIn.member.firstName} ${lastCheckIn.member.lastName}`.trim()
-      : null
-
     const warningText = (() => {
       if (!denied) return null
-      if (code === "INVALID_QR") return t("dashboard.checkins.warnings.invalidQr")
-      if (code === "MEMBER_BLOCKED") return t("dashboard.checkins.warnings.memberBlocked")
-      if (code === "SCANNED_TOO_OFTEN") return t("dashboard.checkins.warnings.scannedTooOften")
+      if (code === "INVALID_QR") return t("dashboard.checkins.warnings.invalidQr", { lng: "it" })
+      if (code === "MEMBER_BLOCKED") return t("dashboard.checkins.warnings.memberBlocked", { lng: "it" })
+      if (code === "SCANNED_TOO_OFTEN") return t("dashboard.checkins.warnings.scannedTooOften", { lng: "it" })
       return (lastCheckIn?.warning ?? null)?.trim() || null
     })()
 
     return {
       denied,
       code,
-      memberName,
       warningText,
       timeText: formatEventTime(lastCheckIn, language),
       dateText: formatEventDate(lastCheckIn, language),
     }
   }, [language, lastCheckIn, t])
 
-  const headerText = status.denied ? t("dashboard.realtime.accessDenied") : t("dashboard.realtime.newCheckin")
-  const mainName = status.memberName || t("dashboard.checkins.unknownMember")
-  const subtitleText = status.denied
-    ? status.warningText || t("dashboard.checkins.none")
-    : t("dashboard.realtime.memberCheckedIn", {
-        firstName: lastCheckIn?.member?.firstName || "",
-        lastName: lastCheckIn?.member?.lastName || "",
-      })
+  const errorText = status.warningText || t("dashboard.checkins.warnings.invalidQr", { lng: "it" })
 
   return (
     <div
@@ -141,44 +106,30 @@ export default function KioskPage() {
           ].join(" ")}
         />
 
-        <div className="relative p-6 sm:p-10 flex flex-col gap-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                {isConnected ? t("dashboard.realtimeConnected") : t("dashboard.realtimeDisconnected")}
-              </div>
-              {wsError && !isConnected && (
-                <div className="text-xs text-destructive/90">
-                  {t(`dashboard.realtimeErrors.${wsError}`, { defaultValue: wsError })}
-                </div>
-              )}
-              <div className="text-lg font-bold tracking-tight text-foreground">{headerText}</div>
-            </div>
-          </div>
-
+        <div className="relative p-6 sm:p-10 flex flex-col items-center justify-center gap-6 min-h-[60vh]">
           {lastCheckIn ? (
-            <div className="flex flex-col items-center text-center gap-4">
-              <div
-                className={[
-                  "text-[clamp(2.2rem,5vw,4.2rem)] font-extrabold leading-none break-words",
-                  status.denied ? "text-destructive" : "text-primary",
-                ].join(" ")}
-              >
-                {mainName}
+            status.denied ? (
+              <div className="flex flex-col items-center justify-center text-center gap-5">
+                <div className="text-[clamp(8rem,28vw,16rem)] font-black leading-none text-destructive select-none">X</div>
+                <div className="text-[clamp(1.1rem,2.6vw,2rem)] font-semibold text-destructive max-w-[26ch] break-words">
+                  {errorText}
+                </div>
+                {status.timeText && <div className="text-xs text-muted-foreground">{status.timeText}</div>}
               </div>
-
-              <div className="text-base sm:text-lg text-muted-foreground max-w-[36ch] break-words">{subtitleText}</div>
-
-              <div className="mt-2 flex flex-col items-center gap-1">
-                {status.timeText && <div className="text-sm text-muted-foreground">{status.timeText}</div>}
-                {status.dateText && <div className="text-xs text-muted-foreground">{status.dateText}</div>}
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center gap-5">
+                <div className="text-[clamp(8rem,28vw,16rem)] font-black leading-none text-green-500 select-none">✓</div>
               </div>
-            </div>
+            )
           ) : (
-            <div className="flex flex-col items-center justify-center text-center gap-4">
-              <div className="text-[clamp(2rem,4vw,3rem)] font-extrabold text-primary">{t("dashboard.checkins.none")}</div>
-              <div className="text-base sm:text-lg text-muted-foreground max-w-[34ch]">{t("profile.scanHint")}</div>
+            <div className="flex flex-col items-center justify-center text-center gap-3">
+              <div className="text-[clamp(1.6rem,3.8vw,2.4rem)] font-bold text-primary">
+                Scansiona il codice QR per effettuare il check-in
+              </div>
             </div>
+          )}
+          {!isConnected && wsError && (
+            <div className="text-xs text-destructive/90 text-center">{t(`dashboard.realtimeErrors.${wsError}`, { defaultValue: wsError })}</div>
           )}
         </div>
       </div>

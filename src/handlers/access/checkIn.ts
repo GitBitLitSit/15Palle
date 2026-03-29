@@ -2,7 +2,7 @@ import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { connectToMongo } from "../../adapters/database";
 import { verifyJWT } from "../../lib/jwt";
 import { Member, CheckIn } from "../../lib/types";
-import { broadcastToDashboard } from "../../adapters/notification";
+import { broadcastToDashboard, broadcastToKiosk } from "../../adapters/notification";
 import { Collection, ObjectId } from "mongodb";
 import { AppError } from "../../lib/appError";
 import { errorResponse, getRequestLanguage, messageResponse } from "../../lib/http";
@@ -22,6 +22,7 @@ async function recordAndBroadcast(
         warningParams?: Record<string, unknown>;
         qrUuid?: string;
         broadcastMember: Member;
+        kioskHasMember: boolean;
     }
 ) {
     await checkinsCollection.insertOne({
@@ -38,6 +39,14 @@ async function recordAndBroadcast(
         await broadcastToDashboard({
             type: "NEW_CHECKIN",
             member: params.broadcastMember,
+            warning: params.warning,
+            warningCode: params.warningCode ?? null,
+            warningParams: params.warningParams,
+            timestamp: now
+        });
+        await broadcastToKiosk({
+            type: "NEW_CHECKIN",
+            hasMember: params.kioskHasMember,
             warning: params.warning,
             warningCode: params.warningCode ?? null,
             warningParams: params.warningParams,
@@ -110,7 +119,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     blocked: false,
                     emailValid: false,
                     qrUuid: trimmedQrCode
-                }
+                },
+                kioskHasMember: false
             });
 
             return errorResponse(event, 404, "MEMBER_NOT_FOUND", undefined, { success: false });
@@ -125,7 +135,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                 source: authSource,
                 warning: warningMsg,
                 warningCode,
-                broadcastMember: { ...member, _id: member._id }
+                broadcastMember: { ...member, _id: member._id },
+                kioskHasMember: true
             });
 
             return errorResponse(event, 403, "MEMBER_BLOCKED", undefined, { success: false });
@@ -151,7 +162,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     source: authSource,
                     warning: warningMsg,
                     warningCode,
-                    broadcastMember: { ...member, _id: member._id }
+                    broadcastMember: { ...member, _id: member._id },
+                    kioskHasMember: true
                 });
                 return messageResponse(event, 200, "COOLDOWN", undefined, {
                     success: false,
@@ -164,7 +176,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             memberId: new ObjectId(member._id),
             source: authSource,
             warning: null,
-            broadcastMember: { ...member, _id: member._id }
+            broadcastMember: { ...member, _id: member._id },
+            kioskHasMember: true
         });
 
         return messageResponse(event, 200, "ACCESS_GRANTED", undefined, {

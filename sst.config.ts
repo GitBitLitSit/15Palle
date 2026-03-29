@@ -250,6 +250,7 @@ export default $config({
     })
 
     const webSocket = new sst.aws.ApiGatewayWebSocket("RealtimeApi");
+    const kioskWebSocket = new sst.aws.ApiGatewayWebSocket("KioskRealtimeApi");
 
     webSocket.route("$connect", {
       handler: "./src/handlers/websocket/connect.handler",
@@ -275,10 +276,35 @@ export default $config({
       transform: importTransform("15PalleWebSocketDisconnectFunction"),
     });
 
+    // Kiosk websocket Lambdas: do not use importTransform — they are created on first deploy.
+    // importTransform expects the function to already exist in AWS (see comment on importTransform).
+    kioskWebSocket.route("$connect", {
+      handler: "./src/handlers/websocket/kioskConnect.handler",
+      environment: {
+        MONGODB_URI: process.env.MONGODB_URI!,
+        MONGODB_DB_NAME: process.env.MONGODB_DB_NAME!,
+      },
+      architecture: "arm64",
+      runtime: "nodejs22.x",
+      name: lambdaName("15PalleKioskWebSocketConnectFunction"),
+    });
+
+    kioskWebSocket.route("$disconnect", {
+      handler: "./src/handlers/websocket/kioskDisconnect.handler",
+      environment: {
+        MONGODB_URI: process.env.MONGODB_URI!,
+        MONGODB_DB_NAME: process.env.MONGODB_DB_NAME!,
+      },
+      architecture: "arm64",
+      runtime: "nodejs22.x",
+      name: lambdaName("15PalleKioskWebSocketDisconnectFunction"),
+    });
+
     api.route("POST /check-in", {
       handler: "./src/handlers/access/checkIn.handler",
       environment: {
         WEBSOCKET_API_URL: webSocket.url,
+        WEBSOCKET_KIOSK_API_URL: kioskWebSocket.url,
         MONGODB_URI: process.env.MONGODB_URI!,
         MONGODB_DB_NAME: process.env.MONGODB_DB_NAME!,
         JWT_SECRET_KEY: process.env.JWT_SECRET_KEY!,
@@ -310,6 +336,7 @@ export default $config({
     return {
       api: api.url,
       websocket: webSocket.url,
+      kioskWebsocket: kioskWebSocket.url,
       // site: site.url,
     };
   }
