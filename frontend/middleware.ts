@@ -87,8 +87,11 @@ export async function middleware(request: NextRequest) {
       authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : ""
     const hasBearer = bearer.length > 0 && timingSafeEqual(bearer, secret)
 
-    const tokenParam = url.searchParams.get("token")?.trim() ?? ""
-    const hasToken = tokenParam.length > 0 && timingSafeEqual(tokenParam, secret)
+    const tokenParamRaw = url.searchParams.get("token")?.trim() ?? ""
+    const tokenParamPlusFixed = tokenParamRaw.replace(/ /g, "+")
+    const hasToken =
+      tokenParamRaw.length > 0 &&
+      (timingSafeEqual(tokenParamRaw, secret) || timingSafeEqual(tokenParamPlusFixed, secret))
 
     if (hasCookie || hasBearer) {
       return NextResponse.next()

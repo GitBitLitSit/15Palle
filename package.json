@@ -28,8 +28,9 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudwatch-logs": "^3.948.0",
+    "@aws-sdk/client-amplify": "^3.1019.0",
     "@aws-sdk/client-apigatewaymanagementapi": "^3.948.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.948.0",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
     "i18next": "^25.7.4",
