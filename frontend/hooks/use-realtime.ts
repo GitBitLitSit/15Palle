@@ -11,18 +11,18 @@ function normalizeWebSocketUrl(input: string): string {
   const raw = input.trim()
   if (!raw) return raw
 
-  // Next/hosting env interpolation can break "$default". Normalize common cases.
-  if (raw.includes("/$default")) {
-    return raw.replace("/$default", "/%24default")
+  // Normalize common variants to the literal API Gateway stage path "/$default".
+  if (raw.includes("/%24default")) {
+    return raw.replace("/%24default", "/$default")
   }
   if (/^wss:\/\/[^/]+\.execute-api\.[^/]+\/default$/i.test(raw)) {
-    return raw.replace(/\/default$/i, "/%24default")
+    return raw.replace(/\/default$/i, "/$default")
   }
   if (/^wss:\/\/[^/]+\.execute-api\.[^/]+\/$/i.test(raw)) {
-    return `${raw}%24default`
+    return `${raw}$default`
   }
   if (/^wss:\/\/[^/]+\.execute-api\.[^/]+$/i.test(raw)) {
-    return `${raw}/%24default`
+    return `${raw}/$default`
   }
   return raw
 }

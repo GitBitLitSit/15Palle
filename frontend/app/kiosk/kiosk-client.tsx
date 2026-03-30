@@ -92,19 +92,35 @@ export default function KioskClient() {
   const language = i18n.language || "it"
 
   const [lastCheckIn, setLastCheckIn] = useState<KioskCheckInEvent | null>(null)
+  const [recentCheckIns, setRecentCheckIns] = useState<
+    Array<{ id: string; name: string; denied: boolean; reason: string; time: string }>
+  >([])
   const [pulse, setPulse] = useState<"success" | "error" | null>(null)
   const [expiresAtMs, setExpiresAtMs] = useState<number | null>(null)
 
   const handleNewCheckIn = useCallback((event: KioskCheckInEvent) => {
+    const code = event.warningCode ?? null
+    const denied = code === "INVALID_QR" || code === "MEMBER_BLOCKED" || code === "SCANNED_TOO_OFTEN"
+    const reason = (() => {
+      if (!denied) return "Ingresso registrato"
+      if (code === "INVALID_QR") return t("dashboard.checkins.warnings.invalidQr", { lng: "it" })
+      if (code === "MEMBER_BLOCKED") return t("dashboard.checkins.warnings.memberBlocked", { lng: "it" })
+      if (code === "SCANNED_TOO_OFTEN") return t("dashboard.checkins.warnings.scannedTooOften", { lng: "it" })
+      return (event.warning ?? "").trim() || "Accesso negato"
+    })()
+
+    const name = (event.memberName ?? "").trim() || (event.hasMember ? "Socio" : "Sconosciuto")
+    const time = formatEventTime(event, language) || "--:--:--"
+
     setLastCheckIn(event)
     setExpiresAtMs(Date.now() + KIOSK_VISIBILITY_MS)
+    setRecentCheckIns((prev) => [{ id: `${Date.now()}-${Math.random()}`, name, denied, reason, time }, ...prev].slice(0, 5))
     setPulse(() => {
-      const code = event.warningCode ?? null
       if (code === "INVALID_QR" || code === "MEMBER_BLOCKED" || code === "SCANNED_TOO_OFTEN") return "error"
       return "success"
     })
     window.setTimeout(() => setPulse(null), 1400)
-  }, [])
+  }, [language, t])
 
   useEffect(() => {
     if (!expiresAtMs || !lastCheckIn) return
@@ -117,8 +133,7 @@ export default function KioskClient() {
   }, [expiresAtMs, lastCheckIn])
 
   const { isConnected } = useRealtimeCheckIns(handleNewCheckIn, {
-    // Prefer main realtime channel for reliability; kiosk channel remains as fallback.
-    wsUrl: process.env.NEXT_PUBLIC_WEBSOCKET_API_URL || process.env.NEXT_PUBLIC_KIOSK_WEBSOCKET_API_URL,
+    wsUrl: process.env.NEXT_PUBLIC_KIOSK_WEBSOCKET_API_URL || process.env.NEXT_PUBLIC_WEBSOCKET_API_URL,
   })
 
   const status = useMemo(() => {
@@ -225,8 +240,9 @@ export default function KioskClient() {
             aria-hidden
           />
 
-          <div className="relative flex flex-1 flex-col justify-center gap-6 p-5 sm:p-10 md:p-12">
-            {lastCheckIn ? (
+          <div className="relative grid flex-1 gap-6 p-5 sm:p-8 md:grid-cols-[1fr_22rem] md:p-10">
+            <div className="flex flex-col justify-center">
+              {lastCheckIn ? (
               status.denied ? (
                 <div className="flex flex-col items-center justify-center text-center">
                   <div
@@ -315,7 +331,35 @@ export default function KioskClient() {
                   Scansiona il codice QR per effettuare il check-in
                 </p>
               </div>
-            )}
+              )}
+            </div>
+
+            <aside className="rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm">
+              <h2 className="text-lg font-semibold text-foreground sm:text-xl">Ultimi 5 check-in</h2>
+              <div className="mt-3 space-y-3">
+                {recentCheckIns.length === 0 ? (
+                  <p className="text-base text-muted-foreground">Nessun check-in recente.</p>
+                ) : (
+                  recentCheckIns.map((entry) => (
+                    <div key={entry.id} className="rounded-xl border border-border/50 bg-card/65 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-lg font-semibold text-foreground">{entry.name}</p>
+                        <span
+                          className={[
+                            "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+                            entry.denied ? "bg-destructive/15 text-destructive" : "bg-accent/20 text-accent-foreground",
+                          ].join(" ")}
+                        >
+                          {entry.denied ? "Negato" : "OK"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{entry.reason}</p>
+                      <p className="mt-1 text-xs text-muted-foreground/80">{entry.time}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </aside>
           </div>
 
           <div className="border-t border-border/60 bg-muted/20 px-4 py-3 sm:px-6">
