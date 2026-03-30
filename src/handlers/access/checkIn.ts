@@ -11,6 +11,12 @@ import { checkBodySize } from "../../lib/bodySize";
 
 type CheckInWarningCode = "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN";
 
+function kioskMemberDisplayName(member: Pick<Member, "firstName" | "lastName"> | null): string | null {
+    if (!member) return null;
+    const name = `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
+    return name.length > 0 ? name : null;
+}
+
 async function recordAndBroadcast(
     checkinsCollection: Collection<CheckIn>,
     now: Date,
@@ -23,6 +29,7 @@ async function recordAndBroadcast(
         qrUuid?: string;
         broadcastMember: Member;
         kioskHasMember: boolean;
+        kioskMemberName: string | null;
     }
 ) {
     await checkinsCollection.insertOne({
@@ -47,6 +54,7 @@ async function recordAndBroadcast(
         await broadcastToKiosk({
             type: "NEW_CHECKIN",
             hasMember: params.kioskHasMember,
+            memberName: params.kioskMemberName,
             warning: params.warning,
             warningCode: params.warningCode ?? null,
             warningParams: params.warningParams,
@@ -120,7 +128,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     emailValid: false,
                     qrUuid: trimmedQrCode
                 },
-                kioskHasMember: false
+                kioskHasMember: false,
+                kioskMemberName: null
             });
 
             return errorResponse(event, 404, "MEMBER_NOT_FOUND", undefined, { success: false });
@@ -136,7 +145,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                 warning: warningMsg,
                 warningCode,
                 broadcastMember: { ...member, _id: member._id },
-                kioskHasMember: true
+                kioskHasMember: true,
+                kioskMemberName: kioskMemberDisplayName(member)
             });
 
             return errorResponse(event, 403, "MEMBER_BLOCKED", undefined, { success: false });
@@ -163,7 +173,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     warning: warningMsg,
                     warningCode,
                     broadcastMember: { ...member, _id: member._id },
-                    kioskHasMember: true
+                    kioskHasMember: true,
+                    kioskMemberName: kioskMemberDisplayName(member)
                 });
                 return messageResponse(event, 200, "COOLDOWN", undefined, {
                     success: false,
@@ -177,7 +188,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             source: authSource,
             warning: null,
             broadcastMember: { ...member, _id: member._id },
-            kioskHasMember: true
+            kioskHasMember: true,
+            kioskMemberName: kioskMemberDisplayName(member)
         });
 
         return messageResponse(event, 200, "ACCESS_GRANTED", undefined, {

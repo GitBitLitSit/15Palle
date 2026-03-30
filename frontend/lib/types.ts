@@ -24,6 +24,8 @@ export interface CheckInEvent {
 export interface KioskCheckInEvent {
   type: "NEW_CHECKIN"
   hasMember: boolean
+  /** Full name for kiosk display when a member is associated with the event */
+  memberName?: string | null
   warning?: string | null
   warningCode?: "INVALID_QR" | "MEMBER_BLOCKED" | "SCANNED_TOO_OFTEN" | null
   warningParams?: Record<string, unknown>

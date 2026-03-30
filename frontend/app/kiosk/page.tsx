@@ -142,6 +142,7 @@ export default function KioskPage() {
   }, [language, lastCheckIn, t])
 
   const errorText = status.warningText || t("dashboard.checkins.warnings.invalidQr", { lng: "it" })
+  const memberName = lastCheckIn?.memberName?.trim() || null
 
   return (
     <div
@@ -231,13 +232,27 @@ export default function KioskPage() {
               status.denied ? (
                 <div className="flex flex-col items-center justify-center text-center">
                   <div
-                    className="mb-6 flex h-36 w-36 items-center justify-center rounded-full border-4 border-destructive/50 bg-destructive/10 shadow-inner sm:h-44 sm:w-44"
+                    className="mb-6 flex h-36 w-36 shrink-0 items-center justify-center rounded-full border-4 border-destructive/50 bg-destructive/10 shadow-inner sm:h-44 sm:w-44"
                     aria-hidden
                   >
-                    <span className="text-[clamp(4.5rem,18vw,8rem)] font-black leading-none text-destructive select-none">
-                      ×
-                    </span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-[58%] w-[58%] text-destructive"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
                   </div>
+                  {memberName && (
+                    <p className="mb-3 max-w-xl text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                      {memberName}
+                    </p>
+                  )}
                   <p className="max-w-xl text-balance text-xl font-semibold text-destructive sm:text-2xl">{errorText}</p>
                   {(status.timeText || status.dateText) && (
                     <p className="mt-4 text-sm text-muted-foreground">
@@ -264,7 +279,16 @@ export default function KioskPage() {
                       </svg>
                     </div>
                   </div>
-                  <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Ingresso registrato</p>
+                  {memberName ? (
+                    <>
+                      <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{memberName}</p>
+                      <p className="mt-3 text-2xl font-semibold tracking-tight text-primary sm:text-3xl">
+                        Ingresso registrato
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Ingresso registrato</p>
+                  )}
                   <p className="mt-3 max-w-md text-balance text-muted-foreground">
                     Tessera valida — buon divertimento.
                   </p>
@@ -303,7 +327,7 @@ export default function KioskPage() {
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:gap-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Shield className="h-3.5 w-3.5 shrink-0 text-primary/80" aria-hidden />
-                <span>Questo schermo non mostra nomi né altri dati personali.</span>
+                <span>Nome e stato ingresso visibili solo su questo terminale — posizionarlo in area riservata.</span>
               </div>
             </div>
             <div className="mt-3">

@@ -276,8 +276,8 @@ export default $config({
       transform: importTransform("15PalleWebSocketDisconnectFunction"),
     });
 
-    // Kiosk websocket Lambdas: do not use importTransform — they are created on first deploy.
-    // importTransform expects the function to already exist in AWS (see comment on importTransform).
+    // Kiosk websocket Lambdas: use importTransform like other routes so existing AWS functions
+    // and CloudWatch log groups stay under SST/Pulumi control (avoids duplicate LogGroup errors).
     kioskWebSocket.route("$connect", {
       handler: "./src/handlers/websocket/kioskConnect.handler",
       environment: {
@@ -287,6 +287,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleKioskWebSocketConnectFunction"),
+      transform: importTransform("15PalleKioskWebSocketConnectFunction"),
     });
 
     kioskWebSocket.route("$disconnect", {
@@ -298,6 +299,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleKioskWebSocketDisconnectFunction"),
+      transform: importTransform("15PalleKioskWebSocketDisconnectFunction"),
     });
 
     api.route("POST /check-in", {
