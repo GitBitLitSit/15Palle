@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { useTranslation } from "react-i18next"
-import { QrCode, Shield, Wifi, WifiOff } from "lucide-react"
+import { CheckCircle2, QrCode, Shield, Wifi, WifiOff, XCircle } from "lucide-react"
 import type { KioskCheckInEvent } from "@/lib/types"
 import { useRealtimeCheckIns } from "@/hooks/use-realtime"
 
@@ -81,8 +81,8 @@ function KioskClock({ language }: { language: string }) {
 
   return (
     <div className="text-right tabular-nums">
-      <div className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{formatted.time}</div>
-      <div className="text-sm text-muted-foreground capitalize sm:text-base">{formatted.date}</div>
+      <div className="text-[clamp(1.9rem,3.2vw,3rem)] font-semibold tracking-tight text-foreground">{formatted.time}</div>
+      <div className="text-[clamp(0.95rem,1.4vw,1.2rem)] text-muted-foreground capitalize">{formatted.date}</div>
     </div>
   )
 }
@@ -183,9 +183,9 @@ export default function KioskClient() {
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-6 sm:px-8 sm:py-10">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1800px] flex-col px-3 py-4 sm:px-6 sm:py-6">
         {/* Brand bar */}
-        <header className="mb-4 flex items-center justify-between gap-4 sm:mb-6">
+        <header className="mb-3 flex items-center justify-between gap-3 sm:mb-5">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/40 to-accent/30 blur-md" aria-hidden />
@@ -193,21 +193,21 @@ export default function KioskClient() {
                 <Image
                   src="/logo.webp"
                   alt=""
-                  width={56}
-                  height={56}
-                  sizes="56px"
-                  className="h-14 w-14 rounded-full object-cover"
+                  width={76}
+                  height={76}
+                  sizes="76px"
+                  className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20"
                   priority
                 />
               </div>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">15 Palle</h1>
+            <h1 className="text-[clamp(2.2rem,4vw,3.8rem)] font-bold tracking-tight text-foreground">15 Palle</h1>
           </div>
 
-          <div className="flex items-center justify-end gap-4 sm:gap-8">
+          <div className="flex items-center justify-end gap-3 sm:gap-8">
             <div
               className={[
-                "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-sm sm:text-base",
+                "flex items-center gap-2 rounded-full border px-4 py-2 text-base font-semibold backdrop-blur-sm sm:px-5 sm:py-2.5 sm:text-lg",
                 isConnected
                   ? "border-accent/40 bg-accent/10 text-accent-foreground"
                   : "border-destructive/30 bg-destructive/10 text-destructive",
@@ -240,8 +240,11 @@ export default function KioskClient() {
             aria-hidden
           />
 
-          <div className="relative grid flex-1 gap-6 p-5 sm:p-8 md:grid-cols-[1fr_22rem] md:p-10">
+          <div className="relative grid flex-1 grid-cols-[1.15fr_0.85fr] gap-4 p-4 sm:gap-6 sm:p-6 lg:p-8 max-[980px]:grid-cols-1">
             <div className="flex flex-col justify-center">
+              <p className="mb-3 text-left text-base font-semibold uppercase tracking-wider text-muted-foreground sm:text-lg">
+                Check-in corrente
+              </p>
               {lastCheckIn ? (
               status.denied ? (
                 <div className="flex flex-col items-center justify-center text-center">
@@ -334,27 +337,34 @@ export default function KioskClient() {
               )}
             </div>
 
-            <aside className="rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm">
-              <h2 className="text-lg font-semibold text-foreground sm:text-xl">Ultimi 5 check-in</h2>
+            <aside className="rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm sm:p-5">
+              <h2 className="text-[clamp(1.25rem,2vw,1.9rem)] font-semibold text-foreground">Ultimi 5 check-in</h2>
               <div className="mt-3 space-y-3">
                 {recentCheckIns.length === 0 ? (
-                  <p className="text-base text-muted-foreground">Nessun check-in recente.</p>
+                  <p className="text-lg text-muted-foreground">Nessun check-in recente.</p>
                 ) : (
                   recentCheckIns.map((entry) => (
-                    <div key={entry.id} className="rounded-xl border border-border/50 bg-card/65 p-3">
+                    <div key={entry.id} className="rounded-xl border border-border/50 bg-card/65 p-3.5">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="truncate text-lg font-semibold text-foreground">{entry.name}</p>
+                        <div className="flex min-w-0 items-center gap-2">
+                          {entry.denied ? (
+                            <XCircle className="h-5 w-5 shrink-0 text-destructive" aria-hidden />
+                          ) : (
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" aria-hidden />
+                          )}
+                          <p className="truncate text-xl font-semibold text-foreground">{entry.name}</p>
+                        </div>
                         <span
                           className={[
-                            "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+                            "shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold",
                             entry.denied ? "bg-destructive/15 text-destructive" : "bg-accent/20 text-accent-foreground",
                           ].join(" ")}
                         >
                           {entry.denied ? "Negato" : "OK"}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{entry.reason}</p>
-                      <p className="mt-1 text-xs text-muted-foreground/80">{entry.time}</p>
+                      <p className="mt-1 text-base text-muted-foreground">{entry.reason}</p>
+                      <p className="mt-1 text-sm text-muted-foreground/80">{entry.time}</p>
                     </div>
                   ))
                 )}
