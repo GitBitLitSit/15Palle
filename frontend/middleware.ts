@@ -28,6 +28,14 @@ async function kioskCookieProof(secret: string): Promise<string> {
     .join("")
 }
 
+async function kioskTokenHash(token: string): Promise<string> {
+  const data = new TextEncoder().encode(`${token}|15palle-kiosk-v1`)
+  const buf = await crypto.subtle.digest("SHA-256", data)
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
 function forbidden(): NextResponse {
   return new NextResponse("Accesso al terminale kiosk non autorizzato.", {
     status: 403,
@@ -70,28 +78,31 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const secret = process.env.KIOSK_ACCESS_SECRET?.trim()
+  const configuredHash = process.env.NEXT_PUBLIC_KIOSK_ACCESS_HASH?.trim()
+  const rawSecret = process.env.KIOSK_ACCESS_SECRET?.trim() || process.env.NEXT_PUBLIC_KIOSK_ACCESS_SECRET?.trim()
+  const expectedHash = configuredHash || (rawSecret ? await kioskTokenHash(rawSecret) : "")
   const isKiosk = isKioskPath(url.pathname)
-  if (isKiosk && isProductionDomain && !secret) {
+  if (isKiosk && isProductionDomain && !expectedHash) {
     // Fail closed on production domain: kiosk must never become public by accident.
     return misconfigured()
   }
 
-  if (secret && isKiosk) {
-    const proof = await kioskCookieProof(secret)
+  if (expectedHash && isKiosk) {
+    const proof = await kioskCookieProof(expectedHash)
     const cookieVal = request.cookies.get(KIOSK_COOKIE)?.value ?? ""
     const hasCookie = cookieVal.length > 0 && timingSafeEqual(cookieVal, proof)
 
     const authHeader = request.headers.get("authorization")
     const bearer =
       authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : ""
-    const hasBearer = bearer.length > 0 && timingSafeEqual(bearer, secret)
+    const hasBearer = bearer.length > 0 && timingSafeEqual(await kioskTokenHash(bearer), expectedHash)
 
     const tokenParamRaw = url.searchParams.get("token")?.trim() ?? ""
     const tokenParamPlusFixed = tokenParamRaw.replace(/ /g, "+")
     const hasToken =
       tokenParamRaw.length > 0 &&
-      (timingSafeEqual(tokenParamRaw, secret) || timingSafeEqual(tokenParamPlusFixed, secret))
+      (timingSafeEqual(await kioskTokenHash(tokenParamRaw), expectedHash) ||
+        timingSafeEqual(await kioskTokenHash(tokenParamPlusFixed), expectedHash))
 
     if (hasCookie || hasBearer) {
       return NextResponse.next()

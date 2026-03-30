@@ -9,6 +9,19 @@ function cookieProof(secret: string): string {
   return createHash("sha256").update(`${secret}|15palle-kiosk-v1`).digest("hex")
 }
 
+function tokenHash(token: string): string {
+  return createHash("sha256").update(`${token}|15palle-kiosk-v1`).digest("hex")
+}
+
+function resolveExpectedHash(): string {
+  const hash = process.env.NEXT_PUBLIC_KIOSK_ACCESS_HASH?.trim()
+  if (hash) return hash
+
+  // Fallbacks for environments where non-public vars are not consistently available at runtime.
+  const rawSecret = process.env.KIOSK_ACCESS_SECRET?.trim() || process.env.NEXT_PUBLIC_KIOSK_ACCESS_SECRET?.trim()
+  return rawSecret ? tokenHash(rawSecret) : ""
+}
+
 function equalSafe(a: string, b: string): boolean {
   if (a.length !== b.length) return false
   return timingSafeEqual(Buffer.from(a), Buffer.from(b))
@@ -26,8 +39,8 @@ export default async function KioskPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const secret = process.env.KIOSK_ACCESS_SECRET?.trim()
-  if (!secret) {
+  const expectedHash = resolveExpectedHash()
+  if (!expectedHash) {
     return (
       <main className="min-h-screen grid place-items-center p-6 text-center">
         <p className="text-lg font-semibold text-destructive">Kiosk access non configurato correttamente.</p>
@@ -37,7 +50,7 @@ export default async function KioskPage({
 
   const params = await searchParams
   const token = readToken(params)
-  const proof = cookieProof(secret)
+  const proof = cookieProof(expectedHash)
   const cookieVal = (await cookies()).get(KIOSK_COOKIE)?.value ?? ""
   const hasCookie = cookieVal.length > 0 && equalSafe(cookieVal, proof)
 
