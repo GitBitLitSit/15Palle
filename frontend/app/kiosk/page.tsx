@@ -81,8 +81,8 @@ function KioskClock({ language }: { language: string }) {
 
   return (
     <div className="text-right tabular-nums">
-      <div className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{formatted.time}</div>
-      <div className="text-xs text-muted-foreground capitalize">{formatted.date}</div>
+      <div className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{formatted.time}</div>
+      <div className="text-sm text-muted-foreground capitalize sm:text-base">{formatted.date}</div>
     </div>
   )
 }
@@ -169,7 +169,7 @@ export default function KioskPage() {
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-6 sm:px-8 sm:py-10">
         {/* Brand bar */}
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4 sm:mb-8">
+        <header className="mb-4 flex items-center justify-between gap-4 sm:mb-6">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/40 to-accent/30 blur-md" aria-hidden />
@@ -185,16 +185,13 @@ export default function KioskPage() {
                 />
               </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">15 Palle</h1>
-              <p className="text-sm text-muted-foreground">Circolo sportivo · Check-in</p>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">15 Palle</h1>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-6">
+          <div className="flex items-center justify-end gap-4 sm:gap-8">
             <div
               className={[
-                "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm",
+                "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-sm sm:text-base",
                 isConnected
                   ? "border-accent/40 bg-accent/10 text-accent-foreground"
                   : "border-destructive/30 bg-destructive/10 text-destructive",
@@ -227,7 +224,7 @@ export default function KioskPage() {
             aria-hidden
           />
 
-          <div className="relative flex flex-1 flex-col justify-center gap-8 p-6 sm:p-12 md:p-14">
+          <div className="relative flex flex-1 flex-col justify-center gap-6 p-5 sm:p-10 md:p-12">
             {lastCheckIn ? (
               status.denied ? (
                 <div className="flex flex-col items-center justify-center text-center">
@@ -253,9 +250,9 @@ export default function KioskPage() {
                       {memberName}
                     </p>
                   )}
-                  <p className="max-w-xl text-balance text-xl font-semibold text-destructive sm:text-2xl">{errorText}</p>
+                  <p className="max-w-xl text-balance text-2xl font-semibold text-destructive sm:text-3xl">{errorText}</p>
                   {(status.timeText || status.dateText) && (
-                    <p className="mt-4 text-sm text-muted-foreground">
+                    <p className="mt-3 text-base text-muted-foreground sm:text-lg">
                       {[status.dateText, status.timeText].filter(Boolean).join(" · ")}
                     </p>
                   )}
@@ -281,19 +278,19 @@ export default function KioskPage() {
                   </div>
                   {memberName ? (
                     <>
-                      <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{memberName}</p>
-                      <p className="mt-3 text-2xl font-semibold tracking-tight text-primary sm:text-3xl">
+                      <p className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{memberName}</p>
+                      <p className="mt-3 text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
                         Ingresso registrato
                       </p>
                     </>
                   ) : (
-                    <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Ingresso registrato</p>
+                    <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Ingresso registrato</p>
                   )}
-                  <p className="mt-3 max-w-md text-balance text-muted-foreground">
+                  <p className="mt-3 max-w-md text-balance text-lg text-muted-foreground sm:text-xl">
                     Tessera valida — buon divertimento.
                   </p>
                   {(status.timeText || status.dateText) && (
-                    <p className="mt-6 text-sm text-muted-foreground">
+                    <p className="mt-4 text-base text-muted-foreground sm:text-lg">
                       {[status.dateText, status.timeText].filter(Boolean).join(" · ")}
                     </p>
                   )}
@@ -313,32 +310,23 @@ export default function KioskPage() {
                     </div>
                   </div>
                 </div>
-                <p className="max-w-lg text-balance text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+                <p className="max-w-lg text-balance text-3xl font-bold leading-tight text-foreground sm:text-4xl">
                   Scansiona il codice QR per effettuare il check-in
-                </p>
-                <p className="mt-4 max-w-md text-pretty text-base text-muted-foreground sm:text-lg">
-                  Avvicina il codice al lettore fino al segnale acustico o alla conferma sullo schermo.
                 </p>
               </div>
             )}
           </div>
 
           <div className="border-t border-border/60 bg-muted/20 px-4 py-3 sm:px-6">
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:gap-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Shield className="h-3.5 w-3.5 shrink-0 text-primary/80" aria-hidden />
-                <span>Nome e stato ingresso visibili solo su questo terminale — posizionarlo in area riservata.</span>
-              </div>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground sm:text-base">
+              <Shield className="h-4 w-4 shrink-0 text-primary/80" aria-hidden />
+              <span>Display riservato</span>
             </div>
-            <div className="mt-3">
+            <div className="mt-2">
               <VisibilityBar expiresAtMs={expiresAtMs} />
             </div>
           </div>
         </div>
-
-        <p className="mt-6 text-center text-[11px] text-muted-foreground/70">
-          15 Palle · Display dedicato al check-in
-        </p>
       </div>
     </div>
   )

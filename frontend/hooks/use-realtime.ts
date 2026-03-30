@@ -7,6 +7,26 @@ type UseRealtimeOptions = { wsUrl?: string }
 
 const isDev = typeof process !== "undefined" && process.env.NODE_ENV === "development"
 
+function normalizeWebSocketUrl(input: string): string {
+  const raw = input.trim()
+  if (!raw) return raw
+
+  // Next/hosting env interpolation can break "$default". Normalize common cases.
+  if (raw.includes("/$default")) {
+    return raw.replace("/$default", "/%24default")
+  }
+  if (/^wss:\/\/[^/]+\.execute-api\.[^/]+\/default$/i.test(raw)) {
+    return raw.replace(/\/default$/i, "/%24default")
+  }
+  if (/^wss:\/\/[^/]+\.execute-api\.[^/]+\/$/i.test(raw)) {
+    return `${raw}%24default`
+  }
+  if (/^wss:\/\/[^/]+\.execute-api\.[^/]+$/i.test(raw)) {
+    return `${raw}/%24default`
+  }
+  return raw
+}
+
 export function useRealtimeCheckIns<TEvent extends { type: string }>(
   onCheckIn: (event: TEvent) => void,
   options?: UseRealtimeOptions,
@@ -23,7 +43,8 @@ export function useRealtimeCheckIns<TEvent extends { type: string }>(
   const [error, setError] = useState<RealtimeErrorCode | null>(null)
 
   useEffect(() => {
-    const wsUrl = options?.wsUrl || process.env.NEXT_PUBLIC_WEBSOCKET_API_URL
+    const provided = options?.wsUrl || process.env.NEXT_PUBLIC_WEBSOCKET_API_URL
+    const wsUrl = provided ? normalizeWebSocketUrl(provided) : provided
 
     if (!wsUrl) {
       if (isDev) console.error("WebSocket URL is not configured")

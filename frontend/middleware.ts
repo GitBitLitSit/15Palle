@@ -35,6 +35,13 @@ function forbidden(): NextResponse {
   })
 }
 
+function misconfigured(): NextResponse {
+  return new NextResponse("Kiosk access non configurato correttamente.", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  })
+}
+
 /**
  * When KIOSK_ACCESS_SECRET is set, /kiosk and /counter require either:
  * - HttpOnly cookie (set once via ?token=SECRET or Authorization: Bearer SECRET), or
@@ -64,7 +71,13 @@ export async function middleware(request: NextRequest) {
   }
 
   const secret = process.env.KIOSK_ACCESS_SECRET?.trim()
-  if (secret && isKioskPath(url.pathname)) {
+  const isKiosk = isKioskPath(url.pathname)
+  if (isKiosk && isProductionDomain && !secret) {
+    // Fail closed on production domain: kiosk must never become public by accident.
+    return misconfigured()
+  }
+
+  if (secret && isKiosk) {
     const proof = await kioskCookieProof(secret)
     const cookieVal = request.cookies.get(KIOSK_COOKIE)?.value ?? ""
     const hasCookie = cookieVal.length > 0 && timingSafeEqual(cookieVal, proof)
