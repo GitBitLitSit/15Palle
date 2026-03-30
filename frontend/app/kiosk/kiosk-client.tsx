@@ -240,21 +240,18 @@ export default function KioskClient() {
             aria-hidden
           />
 
-          <div className="relative grid flex-1 grid-cols-[1.15fr_0.85fr] gap-4 p-4 sm:gap-6 sm:p-6 lg:p-8 max-[980px]:grid-cols-1">
+          <div className="relative grid flex-1 grid-cols-[1.1fr_0.9fr] gap-4 p-4 sm:gap-6 sm:p-6 lg:p-8 max-[980px]:grid-cols-1">
             <div className="flex flex-col justify-center">
-              <p className="mb-3 text-left text-base font-semibold uppercase tracking-wider text-muted-foreground sm:text-lg">
-                Check-in corrente
-              </p>
               {lastCheckIn ? (
               status.denied ? (
                 <div className="flex flex-col items-center justify-center text-center">
                   <div
-                    className="mb-6 flex h-36 w-36 shrink-0 items-center justify-center rounded-full border-4 border-destructive/50 bg-destructive/10 shadow-inner sm:h-44 sm:w-44"
+                    className="mb-6 flex h-44 w-44 shrink-0 items-center justify-center rounded-full border-4 border-destructive/50 bg-destructive/10 shadow-inner sm:h-56 sm:w-56"
                     aria-hidden
                   >
                     <svg
                       viewBox="0 0 24 24"
-                      className="h-[58%] w-[58%] text-destructive"
+                      className="h-[62%] w-[62%] text-destructive"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2.25"
@@ -266,13 +263,13 @@ export default function KioskClient() {
                     </svg>
                   </div>
                   {memberName && (
-                    <p className="mb-3 max-w-xl text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                    <p className="mb-3 max-w-xl text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
                       {memberName}
                     </p>
                   )}
-                  <p className="max-w-xl text-balance text-2xl font-semibold text-destructive sm:text-3xl">{errorText}</p>
+                  <p className="max-w-xl text-balance text-3xl font-semibold text-destructive sm:text-4xl">{errorText}</p>
                   {(status.timeText || status.dateText) && (
-                    <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+                    <p className="mt-4 text-2xl text-muted-foreground sm:text-3xl">
                       {[status.dateText, status.timeText].filter(Boolean).join(" · ")}
                     </p>
                   )}
@@ -281,9 +278,9 @@ export default function KioskClient() {
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="relative mb-8" aria-hidden>
                     <div className="absolute inset-0 animate-pulse-glow rounded-full opacity-60" />
-                    <div className="relative flex h-40 w-40 items-center justify-center rounded-full border-4 border-accent/60 bg-gradient-to-br from-accent/25 to-accent/5 shadow-lg sm:h-48 sm:w-48">
+                    <div className="relative flex h-44 w-44 items-center justify-center rounded-full border-4 border-accent/60 bg-gradient-to-br from-accent/25 to-accent/5 shadow-lg sm:h-56 sm:w-56">
                       <svg
-                        className="h-24 w-24 text-accent sm:h-28 sm:w-28"
+                        className="h-28 w-28 text-accent sm:h-36 sm:w-36"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -298,7 +295,7 @@ export default function KioskClient() {
                   </div>
                   {memberName ? (
                     <>
-                      <p className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{memberName}</p>
+                      <p className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">{memberName}</p>
                       <p className="mt-3 text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
                         Ingresso registrato
                       </p>
@@ -306,11 +303,11 @@ export default function KioskClient() {
                   ) : (
                     <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Ingresso registrato</p>
                   )}
-                  <p className="mt-3 max-w-md text-balance text-lg text-muted-foreground sm:text-xl">
+                  <p className="mt-3 max-w-md text-balance text-xl text-muted-foreground sm:text-2xl">
                     Tessera valida — buon divertimento.
                   </p>
                   {(status.timeText || status.dateText) && (
-                    <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+                    <p className="mt-4 text-2xl text-muted-foreground sm:text-3xl">
                       {[status.dateText, status.timeText].filter(Boolean).join(" · ")}
                     </p>
                   )}
@@ -338,36 +335,30 @@ export default function KioskClient() {
             </div>
 
             <aside className="rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm sm:p-5">
-              <h2 className="text-[clamp(1.25rem,2vw,1.9rem)] font-semibold text-foreground">Ultimi 5 check-in</h2>
-              <div className="mt-3 space-y-3">
+              <h2 className="text-[clamp(1.8rem,3.5vw,2.7rem)] font-bold text-foreground">Ultimi 5 check-in</h2>
+              <div className="mt-4 rounded-2xl border border-border/60 bg-card/55 p-3 sm:p-4">
+                <div className="space-y-3">
                 {recentCheckIns.length === 0 ? (
-                  <p className="text-lg text-muted-foreground">Nessun check-in recente.</p>
+                  <p className="text-2xl text-muted-foreground">Nessun check-in recente.</p>
                 ) : (
                   recentCheckIns.map((entry) => (
-                    <div key={entry.id} className="rounded-xl border border-border/50 bg-card/65 p-3.5">
+                    <div key={entry.id} className="rounded-xl border border-border/50 bg-background/70 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
                           {entry.denied ? (
-                            <XCircle className="h-5 w-5 shrink-0 text-destructive" aria-hidden />
+                            <XCircle className="h-8 w-8 shrink-0 text-destructive" aria-hidden />
                           ) : (
-                            <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" aria-hidden />
+                            <CheckCircle2 className="h-8 w-8 shrink-0 text-accent" aria-hidden />
                           )}
-                          <p className="truncate text-xl font-semibold text-foreground">{entry.name}</p>
+                          <p className="truncate text-3xl font-bold text-foreground">{entry.name}</p>
                         </div>
-                        <span
-                          className={[
-                            "shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold",
-                            entry.denied ? "bg-destructive/15 text-destructive" : "bg-accent/20 text-accent-foreground",
-                          ].join(" ")}
-                        >
-                          {entry.denied ? "Negato" : "OK"}
-                        </span>
+                        <p className="shrink-0 text-2xl font-semibold text-muted-foreground">{entry.time}</p>
                       </div>
-                      <p className="mt-1 text-base text-muted-foreground">{entry.reason}</p>
-                      <p className="mt-1 text-sm text-muted-foreground/80">{entry.time}</p>
+                      <p className="mt-2 text-xl text-muted-foreground">{entry.reason}</p>
                     </div>
                   ))
                 )}
+                </div>
               </div>
             </aside>
           </div>
