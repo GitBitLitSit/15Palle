@@ -67,8 +67,19 @@ export default async function KioskPage({
   }
 
   return (
-    <main className="kiosk-mode min-h-screen">
-      <KioskClient />
-    </main>
+    <>
+      <style>{`
+        html, body {
+          cursor: none !important;
+          overflow: hidden !important;
+        }
+        *, *::before, *::after {
+          cursor: none !important;
+        }
+      `}</style>
+      <main className="kiosk-mode h-screen overflow-hidden">
+        <KioskClient />
+      </main>
+    </>
   )
 }

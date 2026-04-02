@@ -183,7 +183,7 @@ export default function KioskClient() {
 
   return (
     <div
-      className="relative min-h-screen w-full overflow-hidden bg-background"
+      className="relative h-screen w-full overflow-hidden bg-background"
       style={{ touchAction: "manipulation" }}
     >
       {/* Decorative background — abstract only, no venue photos (privacy-friendly) */}
@@ -204,7 +204,7 @@ export default function KioskClient() {
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1800px] flex-col px-3 py-4 sm:px-6 sm:py-6">
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-[1800px] flex-col overflow-hidden px-3 py-4 sm:px-6 sm:py-6">
         {/* Brand bar */}
         <header className="mb-3 flex items-center justify-between gap-3 sm:mb-5">
           <div className="flex items-center gap-4">
@@ -355,7 +355,7 @@ export default function KioskClient() {
               )}
             </div>
 
-            <aside className="rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm sm:p-5">
+            <aside className="min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm sm:p-5">
               <h2 className="text-[clamp(1.8rem,3.5vw,2.7rem)] font-bold text-foreground">Ultimi 4 check-in</h2>
               <div className="mt-4 rounded-2xl border border-border/60 bg-card/55 p-3 sm:p-4">
                 <div className="space-y-3">
@@ -363,19 +363,19 @@ export default function KioskClient() {
                   <p className="text-2xl text-muted-foreground">Nessun check-in recente.</p>
                 ) : (
                   recentCheckIns.map((entry) => (
-                    <div key={entry.id} className="rounded-xl border border-border/50 bg-background/70 p-4">
+                    <div key={entry.id} className="rounded-xl border border-border/50 bg-background/70 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
                           {entry.denied ? (
-                            <XCircle className="h-8 w-8 shrink-0 text-destructive" aria-hidden />
+                            <XCircle className="h-7 w-7 shrink-0 text-destructive" aria-hidden />
                           ) : (
-                            <CheckCircle2 className="h-8 w-8 shrink-0 text-accent" aria-hidden />
+                            <CheckCircle2 className="h-7 w-7 shrink-0 text-accent" aria-hidden />
                           )}
-                          <p className="truncate text-3xl font-bold text-foreground">{entry.name}</p>
+                          <p className="truncate text-2xl font-bold text-foreground">{entry.name}</p>
                         </div>
-                        <p className="shrink-0 text-2xl font-semibold text-muted-foreground">{entry.time}</p>
+                        <p className="shrink-0 text-xl font-semibold text-muted-foreground">{entry.time}</p>
                       </div>
-                      <p className="mt-2 text-xl text-muted-foreground">{entry.reason}</p>
+                      <p className="mt-1.5 line-clamp-1 text-lg text-muted-foreground">{entry.reason}</p>
                     </div>
                   ))
                 )}
