@@ -66,5 +66,9 @@ export default async function KioskPage({
     )
   }
 
-  return <KioskClient />
+  return (
+    <main className="kiosk-mode min-h-screen">
+      <KioskClient />
+    </main>
+  )
 }
