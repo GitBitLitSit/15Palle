@@ -98,6 +98,27 @@ export default function KioskClient() {
   const [pulse, setPulse] = useState<"success" | "error" | null>(null)
   const [expiresAtMs, setExpiresAtMs] = useState<number | null>(null)
 
+  useEffect(() => {
+    const htmlEl = document.documentElement
+    const bodyEl = document.body
+    const prevHtmlCursor = htmlEl.style.cursor
+    const prevBodyCursor = bodyEl.style.cursor
+
+    htmlEl.style.cursor = "none"
+    bodyEl.style.cursor = "none"
+
+    const styleEl = document.createElement("style")
+    styleEl.setAttribute("data-kiosk-cursor-lock", "true")
+    styleEl.textContent = "*, *::before, *::after { cursor: none !important; }"
+    document.head.appendChild(styleEl)
+
+    return () => {
+      htmlEl.style.cursor = prevHtmlCursor
+      bodyEl.style.cursor = prevBodyCursor
+      styleEl.remove()
+    }
+  }, [])
+
   const handleNewCheckIn = useCallback((event: KioskCheckInEvent) => {
     const code = event.warningCode ?? null
     const denied = code === "INVALID_QR" || code === "MEMBER_BLOCKED" || code === "SCANNED_TOO_OFTEN"
@@ -114,7 +135,7 @@ export default function KioskClient() {
 
     setLastCheckIn(event)
     setExpiresAtMs(Date.now() + KIOSK_VISIBILITY_MS)
-    setRecentCheckIns((prev) => [{ id: `${Date.now()}-${Math.random()}`, name, denied, reason, time }, ...prev].slice(0, 5))
+    setRecentCheckIns((prev) => [{ id: `${Date.now()}-${Math.random()}`, name, denied, reason, time }, ...prev].slice(0, 4))
     setPulse(() => {
       if (code === "INVALID_QR" || code === "MEMBER_BLOCKED" || code === "SCANNED_TOO_OFTEN") return "error"
       return "success"
@@ -335,7 +356,7 @@ export default function KioskClient() {
             </div>
 
             <aside className="rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur-sm sm:p-5">
-              <h2 className="text-[clamp(1.8rem,3.5vw,2.7rem)] font-bold text-foreground">Ultimi 5 check-in</h2>
+              <h2 className="text-[clamp(1.8rem,3.5vw,2.7rem)] font-bold text-foreground">Ultimi 4 check-in</h2>
               <div className="mt-4 rounded-2xl border border-border/60 bg-card/55 p-3 sm:p-4">
                 <div className="space-y-3">
                 {recentCheckIns.length === 0 ? (
