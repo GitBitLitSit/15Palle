@@ -145,7 +145,10 @@ function localYmdStartToIso(ymd: string) {
 }
 
 function csvEscape(cell: string) {
-  if (/[",\n\r]/.test(cell)) return `"${cell.replace(/"/g, '""')}"`
+  const delimiter = ";"
+  if (cell.includes('"') || cell.includes(delimiter) || cell.includes("\n") || cell.includes("\r")) {
+    return `"${cell.replace(/"/g, '""')}"`
+  }
   return cell
 }
 
@@ -153,7 +156,8 @@ function buildPeriodCheckInsCsv(
   rows: GroupedCustomerCheckInsRow[],
   headers: { firstName: string; lastName: string; email: string; latest: string; visits: string },
 ) {
-  const head = [headers.firstName, headers.lastName, headers.email, headers.latest, headers.visits].map(csvEscape).join(",")
+  const delimiter = ";"
+  const head = [headers.firstName, headers.lastName, headers.email, headers.latest, headers.visits].map(csvEscape).join(delimiter)
   const body = rows.map((r) => {
     const m = r.member
     const cells = [
@@ -163,7 +167,7 @@ function buildPeriodCheckInsCsv(
       r.latestCheckInTime,
       String(r.checkIns.length),
     ]
-    return cells.map((c) => csvEscape(String(c))).join(",")
+    return cells.map((c) => csvEscape(String(c))).join(delimiter)
   })
   return `\uFEFF${[head, ...body].join("\n")}\n`
 }
