@@ -36,6 +36,9 @@ const resources = {
         IMPORT_BATCH_TOO_LARGE: "Batch troppo grande (max {{max}}).",
         RATE_LIMIT_EXCEEDED: "Troppi tentativi. Riprova più tardi.",
         REQUEST_BODY_TOO_LARGE: "La richiesta è troppo grande.",
+        CHECKINS_PERIOD_FROM_REQUIRED: "Parametro \"from\" (data inizio periodo) obbligatorio.",
+        CHECKINS_PERIOD_INVALID_DATES: "Date del periodo non valide.",
+        CHECKINS_PERIOD_INVALID_RANGE: "La data di inizio deve precedere la data di fine.",
       },
       messages: {
         IF_ACCOUNT_EXISTS: "Se l'account esiste, invieremo un codice di verifica.",
@@ -87,6 +90,9 @@ const resources = {
         IMPORT_BATCH_TOO_LARGE: "Import batch too large (max {{max}}).",
         RATE_LIMIT_EXCEEDED: "Too many requests. Try again later.",
         REQUEST_BODY_TOO_LARGE: "Request body is too large.",
+        CHECKINS_PERIOD_FROM_REQUIRED: "Query parameter \"from\" (period start) is required.",
+        CHECKINS_PERIOD_INVALID_DATES: "Invalid period dates.",
+        CHECKINS_PERIOD_INVALID_RANGE: "Start date must be before end date.",
       },
       messages: {
         IF_ACCOUNT_EXISTS: "If the account exists, we will send a verification code.",
@@ -138,6 +144,9 @@ const resources = {
         IMPORT_BATCH_TOO_LARGE: "Import-Batch ist zu groß (max {{max}}).",
         RATE_LIMIT_EXCEEDED: "Zu viele Anfragen. Bitte später erneut versuchen.",
         REQUEST_BODY_TOO_LARGE: "Anfragekörper ist zu groß.",
+        CHECKINS_PERIOD_FROM_REQUIRED: "Abfrageparameter \"from\" (Periodenbeginn) ist erforderlich.",
+        CHECKINS_PERIOD_INVALID_DATES: "Ungültige Periodendaten.",
+        CHECKINS_PERIOD_INVALID_RANGE: "Startdatum muss vor dem Enddatum liegen.",
       },
       messages: {
         IF_ACCOUNT_EXISTS: "Wenn das Konto existiert, senden wir einen Bestätigungscode.",

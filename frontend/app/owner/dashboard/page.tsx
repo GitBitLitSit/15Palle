@@ -29,13 +29,14 @@ import {
   createMember,
   resetQrCode,
   getCheckIns,
+  getGroupedCheckInsByCustomer,
   updateMember,
   deleteMember,
   checkExistingUsers,
   bulkCreateUsers,
 } from "@/lib/api"
 import { useRealtimeCheckIns } from "@/hooks/use-realtime"
-import type { Member, CheckInEvent } from "@/lib/types"
+import type { Member, CheckInEvent, GroupedCustomerCheckInsRow } from "@/lib/types"
 import {
   Users,
   Upload,
@@ -45,6 +46,8 @@ import {
   UserPlus,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Download,
   AlertCircle,
   CheckCircle2,
   X,
@@ -55,6 +58,7 @@ import { useToast } from "@/hooks/use-toast"
 import { escapeHtml } from "@/lib/utils"
 import * as XLSX from "xlsx"
 import { Spinner } from "@/components/ui/spinner"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 // Client-side expiry checks are for UX only; backend enforces auth.
 function getTokenExpiryMs(token: string): number | null {
@@ -124,6 +128,46 @@ function isUnauthorized(error: unknown): boolean {
   return err?.status === 401
 }
 
+function formatLocalYmd(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+function localYmdStartToIso(ymd: string) {
+  const parts = ymd.split("-").map((x) => parseInt(x, 10))
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+    return new Date().toISOString()
+  }
+  const [y, mo, da] = parts
+  return new Date(y, mo - 1, da, 0, 0, 0, 0).toISOString()
+}
+
+function csvEscape(cell: string) {
+  if (/[",\n\r]/.test(cell)) return `"${cell.replace(/"/g, '""')}"`
+  return cell
+}
+
+function buildPeriodCheckInsCsv(
+  rows: GroupedCustomerCheckInsRow[],
+  headers: { firstName: string; lastName: string; email: string; latest: string; visits: string },
+) {
+  const head = [headers.firstName, headers.lastName, headers.email, headers.latest, headers.visits].map(csvEscape).join(",")
+  const body = rows.map((r) => {
+    const m = r.member
+    const cells = [
+      m?.firstName ?? "",
+      m?.lastName ?? "",
+      m?.email ?? "",
+      r.latestCheckInTime,
+      String(r.checkIns.length),
+    ]
+    return cells.map((c) => csvEscape(String(c))).join(",")
+  })
+  return `\uFEFF${[head, ...body].join("\n")}\n`
+}
+
 export default function OwnerDashboard() {
   const router = useRouter()
   const { toast } = useToast()
@@ -189,6 +233,15 @@ export default function OwnerDashboard() {
   type CheckInsFilter = "all" | "success" | "failure"
   const [checkInsFilter, setCheckInsFilter] = useState<CheckInsFilter>("all")
   const [checkInNotification, setCheckInNotification] = useState<{ type: "failed" | "success"; count: number } | null>(null)
+
+  const [periodFromYmd, setPeriodFromYmd] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return formatLocalYmd(d)
+  })
+  const [groupedCheckIns, setGroupedCheckIns] = useState<GroupedCustomerCheckInsRow[] | null>(null)
+  const [isGroupedReportLoading, setIsGroupedReportLoading] = useState(false)
+  const [expandedGroupedMemberId, setExpandedGroupedMemberId] = useState<string | null>(null)
 
   // --- REFS ---
   const activeTabRef = useRef(activeTab)
@@ -498,6 +551,61 @@ export default function OwnerDashboard() {
       setIsCheckInsLoading(false)
     }
   }, [checkInsPage, checkInsPageSize, checkInsFilter, t, toast])
+
+  const loadGroupedCheckInsReport = useCallback(async () => {
+    setIsGroupedReportLoading(true)
+    setExpandedGroupedMemberId(null)
+    try {
+      const fromIso = localYmdStartToIso(periodFromYmd)
+      const toIso = new Date().toISOString()
+      const result = await getGroupedCheckInsByCustomer(fromIso, toIso)
+      setGroupedCheckIns(result.data || [])
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        redirectToOwnerLogin()
+        return
+      }
+      console.error(error)
+      toast({
+        title: t("dashboard.toasts.errorTitle"),
+        description: t("dashboard.checkins.periodReport.failedLoad"),
+        variant: "destructive",
+      })
+      setGroupedCheckIns(null)
+    } finally {
+      setIsGroupedReportLoading(false)
+    }
+  }, [periodFromYmd, redirectToOwnerLogin, t, toast])
+
+  const exportGroupedCheckInsCsv = useCallback(() => {
+    if (!groupedCheckIns || groupedCheckIns.length === 0) {
+      toast({
+        title: t("dashboard.toasts.validationErrorTitle"),
+        description: t("dashboard.checkins.periodReport.exportNoData"),
+        variant: "destructive",
+      })
+      return
+    }
+    const csv = buildPeriodCheckInsCsv(groupedCheckIns, {
+      firstName: t("dashboard.dialogs.firstName"),
+      lastName: t("dashboard.dialogs.lastName"),
+      email: t("dashboard.dialogs.email"),
+      latest: t("dashboard.checkins.periodReport.tableLatest"),
+      visits: t("dashboard.checkins.periodReport.tableVisits"),
+    })
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    const base = t("dashboard.checkins.periodReport.exportFilename")
+    a.download = `${base}-${periodFromYmd}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast({
+      title: t("dashboard.toasts.exportCompleteTitle"),
+      description: t("dashboard.toasts.exportPeriodCheckinsDesc"),
+    })
+  }, [groupedCheckIns, periodFromYmd, t, toast])
 
   useEffect(() => {
     if (activeTab === "checkins") {
@@ -1313,6 +1421,154 @@ export default function OwnerDashboard() {
 
             {/* --- CHECK-INS TAB --- */}
             <TabsContent value="checkins" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle>{t("dashboard.checkins.periodReport.title")}</CardTitle>
+                    <CardDescription>{t("dashboard.checkins.periodReport.description")}</CardDescription>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="space-y-1">
+                      <Label htmlFor="period-from">{t("dashboard.checkins.periodReport.fromLabel")}</Label>
+                      <Input
+                        id="period-from"
+                        type="date"
+                        value={periodFromYmd}
+                        max={formatLocalYmd(new Date())}
+                        onChange={(e) => setPeriodFromYmd(e.target.value)}
+                        className="w-full sm:w-[11rem]"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => void loadGroupedCheckInsReport()}
+                      disabled={isGroupedReportLoading}
+                      className="sm:mt-6"
+                    >
+                      {isGroupedReportLoading ? (
+                        <>
+                          <Spinner className="mr-2 h-4 w-4" />
+                          {t("dashboard.checkins.periodReport.loading")}
+                        </>
+                      ) : (
+                        t("dashboard.checkins.periodReport.load")
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={exportGroupedCheckInsCsv}
+                      disabled={isGroupedReportLoading}
+                      className="sm:mt-6"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      {t("dashboard.checkins.periodReport.exportCsv")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isGroupedReportLoading && groupedCheckIns === null ? (
+                    <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+                      <Spinner className="h-5 w-5" />
+                      {t("dashboard.checkins.periodReport.loading")}
+                    </div>
+                  ) : groupedCheckIns === null ? (
+                    <p className="text-sm text-muted-foreground">{t("dashboard.checkins.periodReport.placeholder")}</p>
+                  ) : groupedCheckIns.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t("dashboard.checkins.periodReport.none")}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {groupedCheckIns.map((row) => {
+                        const m = row.member
+                        const name = m ? `${m.firstName} ${m.lastName}`.trim() : t("dashboard.checkins.unknownMember")
+                        const email = m?.email || t("dashboard.checkins.noEmail")
+                        const latest = row.latestCheckInTime ? new Date(row.latestCheckInTime) : null
+                        const open = expandedGroupedMemberId === row.memberId
+                        return (
+                          <Collapsible
+                            key={row.memberId}
+                            open={open}
+                            onOpenChange={(next) => setExpandedGroupedMemberId(next ? row.memberId : null)}
+                          >
+                            <div className="rounded-lg border border-border bg-card">
+                              <div className="flex items-center gap-2 p-3 sm:p-4">
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="shrink-0"
+                                    aria-expanded={open}
+                                    aria-label={
+                                      open
+                                        ? t("dashboard.checkins.periodReport.collapseHint")
+                                        : t("dashboard.checkins.periodReport.expandHint")
+                                    }
+                                  >
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-semibold">{name}</p>
+                                  <p className="truncate text-sm text-muted-foreground">{email}</p>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {t("dashboard.checkins.periodReport.visitsInPeriod", { count: row.checkIns.length })}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right text-sm">
+                                  {latest && !Number.isNaN(latest.getTime()) ? (
+                                    <>
+                                      <p className="font-medium">
+                                        {latest.toLocaleString(i18n.language || undefined, {
+                                          dateStyle: "short",
+                                          timeStyle: "medium",
+                                        })}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {t("dashboard.checkins.periodReport.tableLatest")}
+                                      </p>
+                                    </>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </div>
+                              </div>
+                              <CollapsibleContent>
+                                <div className="border-t px-4 pb-3 pt-2">
+                                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                    {t("dashboard.checkins.periodReport.subheadingTimes")}
+                                  </p>
+                                  <ul className="space-y-1 text-sm">
+                                    {row.checkIns.map((ci, idx) => {
+                                      const dt = ci.checkInTime ? new Date(ci.checkInTime) : null
+                                      const ok = dt && !Number.isNaN(dt.getTime())
+                                      return (
+                                        <li
+                                          key={ci._id ?? `${row.memberId}-${idx}`}
+                                          className="flex justify-between gap-2 border-b border-border/50 py-1 last:border-0"
+                                        >
+                                          <span>
+                                            {ok
+                                              ? dt!.toLocaleString(i18n.language || undefined, {
+                                                  dateStyle: "short",
+                                                  timeStyle: "medium",
+                                                })
+                                              : "—"}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">{ci.source}</span>
+                                        </li>
+                                      )
+                                    })}
+                                  </ul>
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>

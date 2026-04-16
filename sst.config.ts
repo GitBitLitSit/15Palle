@@ -235,6 +235,19 @@ export default $config({
       transform: importTransform("15PalleGetCheckInsFunction"),
     });
 
+    api.route("GET /auth/check-ins/by-customer", {
+      handler: "./src/handlers/access/getGroupedByCustomer.handler",
+      environment: {
+        JWT_SECRET_KEY: process.env.JWT_SECRET_KEY!,
+        MONGODB_URI: process.env.MONGODB_URI!,
+        MONGODB_DB_NAME: process.env.MONGODB_DB_NAME!,
+      },
+      architecture: "arm64",
+      runtime: "nodejs22.x",
+      name: lambdaName("15PalleGetCheckInsByCustomerFunction"),
+      transform: importTransform("15PalleGetCheckInsByCustomerFunction"),
+    });
+
     api.route("POST /auth/request-verification", {
       handler: "./src/handlers/auth/requestVerification.handler",
       environment: {

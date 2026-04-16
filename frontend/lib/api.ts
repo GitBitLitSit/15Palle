@@ -183,6 +183,16 @@ export async function getCheckIns(
   return handleResponse(res)
 }
 
+export async function getGroupedCheckInsByCustomer(fromIso: string, toIso?: string) {
+  const params = new URLSearchParams({ from: fromIso })
+  if (toIso) params.set("to", toIso)
+  const res = await fetch(`${API_URL}/auth/check-ins/by-customer?${params.toString()}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  })
+  return handleResponse(res)
+}
+
 export async function updateMember(
   id: string,
   data: {

@@ -10,6 +10,7 @@ import {
   requestVerificationCode,
   verifyAndRecover,
   getCheckIns,
+  getGroupedCheckInsByCustomer,
   updateMember,
   resetQrCode,
   exportMembersCsv,
@@ -151,6 +152,18 @@ describe("api client", () => {
     await getCheckIns(1, 50);
     expect(fetch).toHaveBeenCalledWith(
       `${API_URL}/auth/check-ins?page=1&limit=50`,
+      expect.any(Object)
+    );
+  });
+
+  it("getGroupedCheckInsByCustomer calls GET /auth/check-ins/by-customer with from and optional to", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: [] }),
+    });
+    await getGroupedCheckInsByCustomer("2024-01-01T00:00:00.000Z", "2024-01-31T23:59:59.999Z");
+    expect(fetch).toHaveBeenCalledWith(
+      `${API_URL}/auth/check-ins/by-customer?from=2024-01-01T00%3A00%3A00.000Z&to=2024-01-31T23%3A59%3A59.999Z`,
       expect.any(Object)
     );
   });

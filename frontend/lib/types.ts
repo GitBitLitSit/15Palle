@@ -44,3 +44,18 @@ export interface AuthUser {
   role: "customer" | "owner"
   name: string
 }
+
+/** One successful check-in row inside a grouped customer (period report). */
+export interface GroupedCheckInEntry {
+  _id?: string
+  checkInTime: string
+  source: string
+}
+
+/** Successful check-ins in a date range, grouped by member (one row per member id / email). */
+export interface GroupedCustomerCheckInsRow {
+  memberId: string
+  member: Member | null
+  latestCheckInTime: string
+  checkIns: GroupedCheckInEntry[]
+}
