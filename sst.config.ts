@@ -245,7 +245,6 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleGetCheckInsByCustomerFunction"),
-      transform: importTransform("15PalleGetCheckInsByCustomerFunction"),
     });
 
     api.route("POST /auth/request-verification", {

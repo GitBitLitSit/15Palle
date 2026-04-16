@@ -355,6 +355,7 @@ const resources = {
         tabs: {
           members: "Membri",
           checkins: "Check-in recenti",
+          periodCheckins: "Export check-in",
           import: "Importa",
         },
         members: {
@@ -919,6 +920,7 @@ const resources = {
         tabs: {
           members: "Members",
           checkins: "Recent Check-ins",
+          periodCheckins: "Check-ins Export",
           import: "Import",
         },
         members: {
@@ -1483,6 +1485,7 @@ const resources = {
         tabs: {
           members: "Mitglieder",
           checkins: "Letzte Check-ins",
+          periodCheckins: "Check-ins Export (Zeitraum)",
           import: "Import",
         },
         members: {
