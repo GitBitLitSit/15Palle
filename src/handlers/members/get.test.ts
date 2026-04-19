@@ -45,4 +45,28 @@ describe("GET /members", () => {
     expect(body.data.length).toBe(1);
     expect(body.pagination.total).toBe(1);
   });
+
+  it("finds member when search is full first and last name", async () => {
+    await mockDb.members.insertOne({
+      firstName: "Mario",
+      lastName: "Rossi",
+      email: "mario@example.com",
+      createdAt: new Date(),
+      blocked: false,
+      qrUuid: "q2",
+      emailValid: true,
+    } as any);
+    const token = generateJWT("admin");
+    const event = createApiEvent({
+      method: "GET",
+      path: "/members",
+      headers: { authorization: `Bearer ${token}` },
+      queryStringParameters: { page: "1", limit: "20", search: "Mario Rossi" },
+    });
+    const res = await handler(event, {} as any, () => {});
+    expect(res?.statusCode).toBe(200);
+    const body = parseBody(res);
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].lastName).toBe("Rossi");
+  });
 });

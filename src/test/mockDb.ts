@@ -105,15 +105,28 @@ function createMockCollection<T extends { _id?: any }>(name: string): MockCollec
         }
         if (filter.$or) {
           const or = filter.$or as Array<Record<string, unknown>>;
-          const regex = or.find((x: any) => x.email || x.firstName || x.lastName) as any;
-          const r = regex?.$regex ?? regex;
-          if (r) {
-            const re = new RegExp(String(r), "i");
-            result = result.filter(
-              (d: any) =>
-                re.test(d.firstName) || re.test(d.lastName) || re.test(d.email)
-            );
-          }
+          result = result.filter((d: any) =>
+            or.some((clause: any) => {
+              if (clause.firstName instanceof RegExp && clause.firstName.test(String(d.firstName ?? ""))) return true;
+              if (clause.lastName instanceof RegExp && clause.lastName.test(String(d.lastName ?? ""))) return true;
+              if (clause.email instanceof RegExp && clause.email.test(String(d.email ?? ""))) return true;
+              if (clause.$expr?.$regexMatch) {
+                const rm = clause.$expr.$regexMatch;
+                const flags = rm.options || "i";
+                try {
+                  const re = new RegExp(String(rm.regex), flags);
+                  const fn = String(d.firstName ?? "").trim();
+                  const ln = String(d.lastName ?? "").trim();
+                  const full = `${fn} ${ln}`.replace(/\s+/g, " ").trim();
+                  const rev = `${ln} ${fn}`.replace(/\s+/g, " ").trim();
+                  return re.test(full) || re.test(rev);
+                } catch {
+                  return false;
+                }
+              }
+              return false;
+            })
+          );
         }
         if (filter.blocked === true) result = result.filter((d: any) => d.blocked === true);
         if (filter.emailValid !== undefined) result = result.filter((d: any) => d.emailValid === filter.emailValid);

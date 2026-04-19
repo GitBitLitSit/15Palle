@@ -21,7 +21,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         const DEFAULT_LIMIT = 20;
 
         const rawSearch = queryParams.search?.trim() || "";
-        const search = rawSearch.slice(0, MAX_SEARCH_LENGTH);
+        const search = rawSearch.replace(/\s+/g, " ").slice(0, MAX_SEARCH_LENGTH);
         const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
         const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(queryParams.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
         const statusFilter = (queryParams.status || "all").toLowerCase();
@@ -31,14 +31,31 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
         let dbQuery: Record<string, unknown> = {};
 
-        // Filter by text search (escape regex special chars to avoid ReDoS)
+        // Filter by text search (escape regex special chars to avoid ReDoS).
+        // Match each field alone, and also "First Last" / "Last First" so full-name queries work.
         if (search) {
             const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             const regex = new RegExp(escaped, "i");
+            const fullNameInput = {
+                $trim: {
+                    input: {
+                        $concat: [{ $ifNull: ["$firstName", ""] }, " ", { $ifNull: ["$lastName", ""] }],
+                    },
+                },
+            };
+            const fullNameLastFirstInput = {
+                $trim: {
+                    input: {
+                        $concat: [{ $ifNull: ["$lastName", ""] }, " ", { $ifNull: ["$firstName", ""] }],
+                    },
+                },
+            };
             dbQuery.$or = [
                 { firstName: regex },
                 { lastName: regex },
                 { email: regex },
+                { $expr: { $regexMatch: { input: fullNameInput, regex: escaped, options: "i" } } },
+                { $expr: { $regexMatch: { input: fullNameLastFirstInput, regex: escaped, options: "i" } } },
             ];
         }
 
