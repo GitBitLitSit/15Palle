@@ -411,11 +411,12 @@ const resources = {
           periodReport: {
             title: "Check-in per periodo (solo riusciti)",
             description:
-              "Dal giorno selezionato a oggi: un rigo per membro (email univoca), ordinato dall’ultimo ingresso. Espandi per tutti i check-in nel periodo.",
+              "Dal giorno di inizio al giorno di fine selezionati: un rigo per membro (email univoca), ordinato dall’ultimo ingresso. Espandi per tutti i check-in nel periodo.",
             fromLabel: "Dal giorno",
+            toLabel: "Al giorno",
             load: "Carica",
             placeholder:
-              "Scegli la data di inizio e tocca Carica per vedere i check-in riusciti da quel giorno a oggi (un membro per riga, email distintiva).",
+              "Scegli data inizio e fine, poi tocca Carica (un membro per riga; l’email distingue omonimi). Non sono ammesse date future.",
             exportCsv: "Esporta CSV",
             exporting: "Esportazione…",
             loading: "Caricamento…",
@@ -976,11 +977,12 @@ const resources = {
           periodReport: {
             title: "Check-ins by period (successful only)",
             description:
-              "From the selected start date through today: one row per member (unique by email), ordered by most recent visit. Expand a row to see every successful check-in in that range.",
+              "From the selected start date through the selected end date: one row per member (unique by email), ordered by most recent visit. Expand a row to see every successful check-in in that range.",
             fromLabel: "From date",
+            toLabel: "To date",
             load: "Load",
             placeholder:
-              "Pick a start date and tap Load to see successful check-ins from that calendar day through now (one row per member; email tells identical names apart).",
+              "Pick a start and end date, then tap Load (one row per member; email distinguishes identical names). Future dates are not allowed.",
             exportCsv: "Export CSV",
             exporting: "Exporting…",
             loading: "Loading…",
@@ -1541,11 +1543,12 @@ const resources = {
           periodReport: {
             title: "Check-ins nach Zeitraum (nur erfolgreich)",
             description:
-              "Vom gewählten Startdatum bis heute: eine Zeile pro Mitglied (eindeutig per E-Mail), sortiert nach letztem Besuch. Zeile aufklappen für alle Check-ins im Zeitraum.",
+              "Vom gewählten Start- bis Enddatum: eine Zeile pro Mitglied (eindeutig per E-Mail), sortiert nach letztem Besuch. Zeile aufklappen für alle Check-ins im Zeitraum.",
             fromLabel: "Ab Datum",
+            toLabel: "Bis Datum",
             load: "Laden",
             placeholder:
-              "Startdatum wählen und Laden tippen: erfolgreiche Check-ins von diesem Tag bis jetzt (eine Zeile pro Mitglied; E-Mail unterscheidet gleiche Namen).",
+              "Start- und Enddatum wählen, dann Laden tippen (eine Zeile pro Mitglied; E-Mail unterscheidet gleiche Namen). Zukünftige Daten sind nicht möglich.",
             exportCsv: "CSV exportieren",
             exporting: "Export…",
             loading: "Laden…",

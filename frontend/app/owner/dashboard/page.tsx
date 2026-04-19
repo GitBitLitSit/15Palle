@@ -144,6 +144,15 @@ function localYmdStartToIso(ymd: string) {
   return new Date(y, mo - 1, da, 0, 0, 0, 0).toISOString()
 }
 
+function localYmdEndToIso(ymd: string) {
+  const parts = ymd.split("-").map((x) => parseInt(x, 10))
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+    return new Date().toISOString()
+  }
+  const [y, mo, da] = parts
+  return new Date(y, mo - 1, da, 23, 59, 59, 999).toISOString()
+}
+
 function csvEscape(cell: string) {
   const delimiter = ";"
   if (cell.includes('"') || cell.includes(delimiter) || cell.includes("\n") || cell.includes("\r")) {
@@ -243,6 +252,7 @@ export default function OwnerDashboard() {
     d.setDate(d.getDate() - 30)
     return formatLocalYmd(d)
   })
+  const [periodToYmd, setPeriodToYmd] = useState(() => formatLocalYmd(new Date()))
   const [groupedCheckIns, setGroupedCheckIns] = useState<GroupedCustomerCheckInsRow[] | null>(null)
   const [isGroupedReportLoading, setIsGroupedReportLoading] = useState(false)
   const [expandedGroupedMemberId, setExpandedGroupedMemberId] = useState<string | null>(null)
@@ -561,7 +571,7 @@ export default function OwnerDashboard() {
     setExpandedGroupedMemberId(null)
     try {
       const fromIso = localYmdStartToIso(periodFromYmd)
-      const toIso = new Date().toISOString()
+      const toIso = localYmdEndToIso(periodToYmd)
       const result = await getGroupedCheckInsByCustomer(fromIso, toIso)
       setGroupedCheckIns(result.data || [])
     } catch (error) {
@@ -579,7 +589,7 @@ export default function OwnerDashboard() {
     } finally {
       setIsGroupedReportLoading(false)
     }
-  }, [periodFromYmd, redirectToOwnerLogin, t, toast])
+  }, [periodFromYmd, periodToYmd, redirectToOwnerLogin, t, toast])
 
   const exportGroupedCheckInsCsv = useCallback(() => {
     if (!groupedCheckIns || groupedCheckIns.length === 0) {
@@ -602,14 +612,32 @@ export default function OwnerDashboard() {
     const a = document.createElement("a")
     a.href = url
     const base = t("dashboard.checkins.periodReport.exportFilename")
-    a.download = `${base}-${periodFromYmd}.csv`
+    a.download = `${base}-${periodFromYmd}_${periodToYmd}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast({
       title: t("dashboard.toasts.exportCompleteTitle"),
       description: t("dashboard.toasts.exportPeriodCheckinsDesc"),
     })
-  }, [groupedCheckIns, periodFromYmd, t, toast])
+  }, [groupedCheckIns, periodFromYmd, periodToYmd, t, toast])
+
+  const todayYmd = formatLocalYmd(new Date())
+  const periodFromMaxYmd = periodToYmd <= todayYmd ? periodToYmd : todayYmd
+
+  const onPeriodFromYmdChange = (value: string) => {
+    setPeriodFromYmd(value)
+    setPeriodToYmd((prev) => (value > prev ? value : prev))
+    setGroupedCheckIns(null)
+    setExpandedGroupedMemberId(null)
+  }
+
+  const onPeriodToYmdChange = (value: string) => {
+    const capped = value > todayYmd ? todayYmd : value
+    setPeriodToYmd(capped)
+    setPeriodFromYmd((prev) => (capped < prev ? capped : prev))
+    setGroupedCheckIns(null)
+    setExpandedGroupedMemberId(null)
+  }
 
   useEffect(() => {
     if (activeTab === "checkins") {
@@ -1431,156 +1459,6 @@ export default function OwnerDashboard() {
 
             {/* --- CHECK-INS TAB --- */}
             <TabsContent value="checkins" className="space-y-4">
-              {activeTab === "periodCheckins" && (
-              <Card>
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-1">
-                    <CardTitle>{t("dashboard.checkins.periodReport.title")}</CardTitle>
-                    <CardDescription>{t("dashboard.checkins.periodReport.description")}</CardDescription>
-                  </div>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                    <div className="space-y-1">
-                      <Label htmlFor="period-from">{t("dashboard.checkins.periodReport.fromLabel")}</Label>
-                      <Input
-                        id="period-from"
-                        type="date"
-                        value={periodFromYmd}
-                        max={formatLocalYmd(new Date())}
-                        onChange={(e) => setPeriodFromYmd(e.target.value)}
-                        className="w-full sm:w-[11rem]"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => void loadGroupedCheckInsReport()}
-                      disabled={isGroupedReportLoading}
-                      className="sm:mt-6"
-                    >
-                      {isGroupedReportLoading ? (
-                        <>
-                          <Spinner className="mr-2 h-4 w-4" />
-                          {t("dashboard.checkins.periodReport.loading")}
-                        </>
-                      ) : (
-                        t("dashboard.checkins.periodReport.load")
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={exportGroupedCheckInsCsv}
-                      disabled={isGroupedReportLoading}
-                      className="sm:mt-6"
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      {t("dashboard.checkins.periodReport.exportCsv")}
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {isGroupedReportLoading && groupedCheckIns === null ? (
-                    <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
-                      <Spinner className="h-5 w-5" />
-                      {t("dashboard.checkins.periodReport.loading")}
-                    </div>
-                  ) : groupedCheckIns === null ? (
-                    <p className="text-sm text-muted-foreground">{t("dashboard.checkins.periodReport.placeholder")}</p>
-                  ) : groupedCheckIns.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("dashboard.checkins.periodReport.none")}</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {groupedCheckIns.map((row) => {
-                        const m = row.member
-                        const name = m ? `${m.firstName} ${m.lastName}`.trim() : t("dashboard.checkins.unknownMember")
-                        const email = m?.email || t("dashboard.checkins.noEmail")
-                        const latest = row.latestCheckInTime ? new Date(row.latestCheckInTime) : null
-                        const open = expandedGroupedMemberId === row.memberId
-                        return (
-                          <Collapsible
-                            key={row.memberId}
-                            open={open}
-                            onOpenChange={(next) => setExpandedGroupedMemberId(next ? row.memberId : null)}
-                          >
-                            <div className="rounded-lg border border-border bg-card">
-                              <div className="flex items-center gap-2 p-3 sm:p-4">
-                                <CollapsibleTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="shrink-0"
-                                    aria-expanded={open}
-                                    aria-label={
-                                      open
-                                        ? t("dashboard.checkins.periodReport.collapseHint")
-                                        : t("dashboard.checkins.periodReport.expandHint")
-                                    }
-                                  >
-                                    <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-                                  </Button>
-                                </CollapsibleTrigger>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate font-semibold">{name}</p>
-                                  <p className="truncate text-sm text-muted-foreground">{email}</p>
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {t("dashboard.checkins.periodReport.visitsInPeriod", { count: row.checkIns.length })}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right text-sm">
-                                  {latest && !Number.isNaN(latest.getTime()) ? (
-                                    <>
-                                      <p className="font-medium">
-                                        {latest.toLocaleString(i18n.language || undefined, {
-                                          dateStyle: "short",
-                                          timeStyle: "medium",
-                                        })}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {t("dashboard.checkins.periodReport.tableLatest")}
-                                      </p>
-                                    </>
-                                  ) : (
-                                    "—"
-                                  )}
-                                </div>
-                              </div>
-                              <CollapsibleContent>
-                                <div className="border-t px-4 pb-3 pt-2">
-                                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                    {t("dashboard.checkins.periodReport.subheadingTimes")}
-                                  </p>
-                                  <ul className="space-y-1 text-sm">
-                                    {row.checkIns.map((ci, idx) => {
-                                      const dt = ci.checkInTime ? new Date(ci.checkInTime) : null
-                                      const ok = dt && !Number.isNaN(dt.getTime())
-                                      return (
-                                        <li
-                                          key={ci._id ?? `${row.memberId}-${idx}`}
-                                          className="flex justify-between gap-2 border-b border-border/50 py-1 last:border-0"
-                                        >
-                                          <span>
-                                            {ok
-                                              ? dt!.toLocaleString(i18n.language || undefined, {
-                                                  dateStyle: "short",
-                                                  timeStyle: "medium",
-                                                })
-                                              : "—"}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground">{ci.source}</span>
-                                        </li>
-                                      )
-                                    })}
-                                  </ul>
-                                </div>
-                              </CollapsibleContent>
-                            </div>
-                          </Collapsible>
-                        )
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              )}
               <Card>
                 <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -1756,25 +1634,34 @@ export default function OwnerDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="space-y-2">
-                      <Label htmlFor="period-from">{t("dashboard.checkins.periodReport.fromLabel")}</Label>
-                      <Input
-                        id="period-from"
-                        type="date"
-                        value={periodFromYmd}
-                        max={formatLocalYmd(new Date())}
-                        onChange={(e) => {
-                          setPeriodFromYmd(e.target.value)
-                          setGroupedCheckIns(null)
-                          setExpandedGroupedMemberId(null)
-                        }}
-                        className="w-full sm:w-[14rem]"
-                      />
-                      <p className="text-xs text-muted-foreground">{t("dashboard.checkins.periodReport.placeholder")}</p>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                      <div className="space-y-2">
+                        <Label htmlFor="period-export-from">{t("dashboard.checkins.periodReport.fromLabel")}</Label>
+                        <Input
+                          id="period-export-from"
+                          type="date"
+                          value={periodFromYmd}
+                          max={periodFromMaxYmd}
+                          onChange={(e) => onPeriodFromYmdChange(e.target.value)}
+                          className="w-full sm:w-[11rem]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="period-export-to">{t("dashboard.checkins.periodReport.toLabel")}</Label>
+                        <Input
+                          id="period-export-to"
+                          type="date"
+                          value={periodToYmd}
+                          min={periodFromYmd}
+                          max={todayYmd}
+                          onChange={(e) => onPeriodToYmdChange(e.target.value)}
+                          className="w-full sm:w-[11rem]"
+                        />
+                      </div>
                     </div>
 
-                    <div className="flex gap-2 sm:justify-end">
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
                       <Button
                         type="button"
                         onClick={() => void loadGroupedCheckInsReport()}
@@ -1802,6 +1689,7 @@ export default function OwnerDashboard() {
                       </Button>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">{t("dashboard.checkins.periodReport.placeholder")}</p>
 
                   {isGroupedReportLoading && groupedCheckIns === null ? (
                     <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
