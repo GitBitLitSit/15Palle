@@ -30,6 +30,15 @@ export default $config({
         opts.import = lambdaName(fnBase);
       },
     });
+    /** Use when AWS already has `/aws/lambda/<name>` but it is not in Pulumi state (avoids CreateLogGroup conflict). */
+    const importTransformWithLogGroup = (fnBase: string) => ({
+      function: (_args: unknown, opts: { import?: string }) => {
+        opts.import = lambdaName(fnBase);
+      },
+      logGroup: (_args: unknown, opts: { import?: string }) => {
+        opts.import = `/aws/lambda/${lambdaName(fnBase)}`;
+      },
+    });
     const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
       .split(",")
       .map((origin) => origin.trim())
@@ -245,6 +254,7 @@ export default $config({
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleGetCheckInsByCustomerFunction"),
+      transform: importTransformWithLogGroup("15PalleGetCheckInsByCustomerFunction"),
     });
 
     api.route("POST /auth/request-verification", {
