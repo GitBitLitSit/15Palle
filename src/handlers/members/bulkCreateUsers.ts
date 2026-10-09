@@ -1,6 +1,7 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { connectToMongoose } from "../../adapters/mongoose";
-import { sendQrCodeEmail } from "../../adapters/email";
+import { enqueueQrEmails } from "../../adapters/emailQueue";
+import { sendImportNotificationEmail } from "../../adapters/email";
 import { AppError } from "../../lib/appError";
 import { errorResponse, json, getClientIp } from "../../lib/http";
 import { verifyJWT } from "../../lib/jwt";
@@ -14,14 +15,11 @@ type IncomingUser = {
   sendEmail?: unknown;
 };
 
-async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>) {
-  for (let i = 0; i < items.length; i += limit) {
-    const batch = items.slice(i, i + limit);
-    await Promise.all(batch.map((item) => worker(item)));
-  }
-}
+/** Imports of at least this many new members trigger a notification email to IMPORT_NOTIFICATION_EMAIL. */
+const IMPORT_NOTIFICATION_THRESHOLD = 20;
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+  const startedAt = Date.now();
   const token = event.headers.authorization?.split(" ")[1];
   if (!token) {
     return errorResponse(event, 401, "NO_TOKEN_PROVIDED");
@@ -63,6 +61,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         createdAt: new Date(),
         blocked: false,
         emailValid: false,
+        emailInvalid: false,
         qrUuid: crypto.randomUUID(),
       });
     }
@@ -73,61 +72,61 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     await connectToMongoose();
 
+    let insertedDocs: Array<{ _id: unknown; email: unknown }>;
+    let duplicates: number | undefined;
+
     try {
-      const insertedDocs = await MemberModel.insertMany(docs, { ordered: false });
-
-      let emailSent = 0;
-      let emailFailed = 0;
-      const sendTargets = insertedDocs.filter((doc) => sendEmailMap.get(String(doc.email).toLowerCase()));
-
-      if (sendTargets.length > 0) {
-        const senderEmail = process.env.SES_SENDER_EMAIL;
-        if (!senderEmail) {
-          return errorResponse(event, 500, "INTERNAL_SERVER_ERROR");
-        }
-
-        await runWithConcurrency(sendTargets, 5, async (doc) => {
-          const { success } = await sendQrCodeEmail(
-            senderEmail,
-            String(doc.firstName),
-            String(doc.lastName),
-            String(doc.email),
-            String(doc.qrUuid),
-          );
-
-          if (success) {
-            emailSent += 1;
-            await MemberModel.updateOne({ _id: doc._id }, { $set: { emailValid: true } });
-          } else {
-            emailFailed += 1;
-          }
-        });
-      }
-
-      await auditLog({
-        at: new Date(),
-        action: "members_bulk_create",
-        actor,
-        ip: getClientIp(event),
-        details: { inserted: insertedDocs.length, invalid, emailSent, emailFailed },
-      });
-      return json(200, { inserted: insertedDocs.length, invalid, emailSent, emailFailed });
+      insertedDocs = await MemberModel.insertMany(docs, { ordered: false });
     } catch (error) {
       const writeErrors = (error as { writeErrors?: Array<{ code?: number }> })?.writeErrors;
       const hasDuplicate =
         (error as { code?: number })?.code === 11000 ||
         (Array.isArray(writeErrors) && writeErrors.some((entry) => entry?.code === 11000));
 
-      if (hasDuplicate) {
-        const inserted = Array.isArray((error as { insertedDocs?: unknown[] })?.insertedDocs)
-          ? (error as { insertedDocs?: unknown[] }).insertedDocs?.length ?? 0
-          : 0;
-        const duplicates = writeErrors?.length ?? 0;
-        return json(200, { inserted, invalid, duplicates });
+      if (!hasDuplicate) {
+        return errorResponse(event, 500, "INTERNAL_SERVER_ERROR");
       }
 
-      return errorResponse(event, 500, "INTERNAL_SERVER_ERROR");
+      // ordered: false still inserts the non-duplicate docs; they need their emails too
+      const partial = (error as { insertedDocs?: Array<{ _id: unknown; email: unknown }> })?.insertedDocs;
+      insertedDocs = Array.isArray(partial) ? partial : [];
+      duplicates = writeErrors?.length ?? 0;
     }
+
+    // Emails are sent asynchronously by the queue consumer, so this request stays short
+    const sendTargetIds = insertedDocs
+      .filter((doc) => sendEmailMap.get(String(doc.email).toLowerCase()))
+      .map((doc) => String(doc._id));
+    const { queued: emailQueued, failed: emailQueueFailed } = await enqueueQrEmails(sendTargetIds);
+
+    const notificationEmail = process.env.IMPORT_NOTIFICATION_EMAIL;
+    const senderEmail = process.env.SES_SENDER_EMAIL;
+    if (notificationEmail && senderEmail && insertedDocs.length >= IMPORT_NOTIFICATION_THRESHOLD) {
+      await sendImportNotificationEmail(senderEmail, notificationEmail, {
+        inserted: insertedDocs.length,
+        invalid,
+        duplicates,
+        emailQueued,
+        emailQueueFailed,
+        durationMs: Date.now() - startedAt,
+        actor,
+      });
+    }
+
+    await auditLog({
+      at: new Date(),
+      action: "members_bulk_create",
+      actor,
+      ip: getClientIp(event),
+      details: { inserted: insertedDocs.length, invalid, duplicates, emailQueued, emailQueueFailed },
+    });
+    return json(200, {
+      inserted: insertedDocs.length,
+      invalid,
+      ...(duplicates !== undefined ? { duplicates } : {}),
+      emailQueued,
+      emailQueueFailed,
+    });
   } catch (error) {
     if (error instanceof AppError && error.code === "INVALID_TOKEN") {
       return errorResponse(event, 401, "INVALID_TOKEN");

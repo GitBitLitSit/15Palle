@@ -158,15 +158,62 @@ export default $config({
       transform: importTransform("15PalleCheckExistingUsersFunction"),
     });
 
+    // QR emails for imported members are sent asynchronously so the import Lambda stays short.
+    // Failed sends are retried by SQS at most 3 times, then parked in the DLQ (auto-deleted after 4 days).
+    const emailDeadLetterQueue = new sst.aws.Queue("EmailDeadLetterQueue", {
+      transform: {
+        queue: { messageRetentionSeconds: 4 * 24 * 60 * 60 },
+      },
+    });
+
+    const emailQueue = new sst.aws.Queue("EmailQueue", {
+      // Must be >= sender timeout; also the delay before a failed message is retried
+      visibilityTimeout: "60 seconds",
+      dlq: { queue: emailDeadLetterQueue.arn, retry: 3 },
+    });
+
+    emailQueue.subscribe(
+      {
+        handler: "./src/handlers/members/sendQueuedQrEmails.handler",
+        environment: {
+          MONGODB_URI: process.env.MONGODB_URI!,
+          MONGODB_DB_NAME: process.env.MONGODB_DB_NAME!,
+          SES_SENDER_EMAIL: process.env.SES_SENDER_EMAIL!,
+          MAIL_API_KEY: process.env.MAIL_API_KEY!,
+        },
+        architecture: "arm64",
+        runtime: "nodejs22.x",
+        memory: "256 MB",
+        timeout: "30 seconds",
+        name: lambdaName("15PalleSendQueuedQrEmailsFunction"),
+      },
+      {
+        batch: { size: 10, partialResponses: true },
+        transform: {
+          // Limit parallel senders so ZeptoMail is not flooded
+          eventSourceMapping: { scalingConfig: { maximumConcurrency: 2 } },
+        },
+      },
+    );
+
     api.route("POST /bulk-create-users", {
       handler: "./src/handlers/members/bulkCreateUsers.handler",
       environment: {
         JWT_SECRET_KEY: process.env.JWT_SECRET_KEY!,
         MONGODB_URI: process.env.MONGODB_URI!,
         MONGODB_DB_NAME: process.env.MONGODB_DB_NAME!,
+        EMAIL_QUEUE_URL: emailQueue.url,
+        // Notification for imports with >= 20 new members (watch queue behaviour)
+        IMPORT_NOTIFICATION_EMAIL: process.env.IMPORT_NOTIFICATION_EMAIL ?? "intify.dev@protonmail.com",
         SES_SENDER_EMAIL: process.env.SES_SENDER_EMAIL!,
         MAIL_API_KEY: process.env.MAIL_API_KEY!,
       },
+      permissions: [
+        {
+          actions: ["sqs:SendMessage"],
+          resources: [emailQueue.arn],
+        },
+      ],
       architecture: "arm64",
       runtime: "nodejs22.x",
       name: lambdaName("15PalleBulkCreateUsersFunction"),

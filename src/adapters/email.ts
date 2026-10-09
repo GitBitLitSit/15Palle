@@ -5,7 +5,13 @@ const ZEPTO_SMTP_HOST = "smtp.zeptomail.eu";
 const ZEPTO_SMTP_PORT = 587;
 const ZEPTO_SMTP_USER = "emailapikey";
 
-const getZeptoTransporter = () => {
+const getZeptoTransporter = () => createMailTransport();
+
+/**
+ * With `pool: true` one SMTP connection is reused for many mails (used by the queue sender).
+ * Pooled transports must be closed with `transporter.close()` when done.
+ */
+export const createMailTransport = (options?: { pool?: boolean }) => {
   const mailApiKey = process.env.MAIL_API_KEY;
   if (!mailApiKey) {
     throw new Error("MAIL_API_KEY is not set");
@@ -19,28 +25,25 @@ const getZeptoTransporter = () => {
       user: ZEPTO_SMTP_USER,
       pass: mailApiKey,
     },
+    ...(options?.pool ? { pool: true, maxConnections: 2 } : {}),
   });
 };
 
-export const sendQrCodeEmail = async (
+export const buildQrCodeMail = async (
   sourceMail: string,
   firstName: string,
   lastName: string,
   email: string,
   qrUuid: string
 ) => {
-  try {
-    const qrCodeDataUrl = await QRCode.toDataURL(qrUuid);
+  const qrCodeDataUrl = await QRCode.toDataURL(qrUuid);
+  const cid = qrUuid;
 
-    const transporter = getZeptoTransporter();
-
-    const cid = qrUuid;
-
-    const info = await transporter.sendMail({
-      from: sourceMail,
-      to: email,
-      subject: "Il tuo QR code per 15 Palle",
-      html: `
+  return {
+    from: sourceMail,
+    to: email,
+    subject: "Il tuo QR code per 15 Palle",
+    html: `
         <div style="font-family: sans-serif; padding: 20px;">
           <h2>Ciao ${firstName},</h2>
           <p>Benvenuto al club di biliardo 15 Palle!</p>
@@ -54,15 +57,29 @@ export const sendQrCodeEmail = async (
           <p>Grazie,<br>Il team di 15 Palle</p>
         </div>
       `,
-      text: `Ciao ${firstName} ${lastName}, trovi in allegato il tuo QR code personale.`,
-      attachments: [
-        {
-          filename: "qrcode.png",
-          path: qrCodeDataUrl,
-          cid: cid
-        },
-      ],
-    });
+    text: `Ciao ${firstName} ${lastName}, trovi in allegato il tuo QR code personale.`,
+    attachments: [
+      {
+        filename: "qrcode.png",
+        path: qrCodeDataUrl,
+        cid: cid
+      },
+    ],
+  };
+};
+
+export const sendQrCodeEmail = async (
+  sourceMail: string,
+  firstName: string,
+  lastName: string,
+  email: string,
+  qrUuid: string
+) => {
+  try {
+    const transporter = getZeptoTransporter();
+    const info = await transporter.sendMail(
+      await buildQrCodeMail(sourceMail, firstName, lastName, email, qrUuid)
+    );
 
     return { success: true, data: info };
   } catch {
@@ -100,6 +117,56 @@ export const sendVerificationEmail = async (
 
         return { success: true, data: info };
 
+    } catch {
+        return { success: false };
+    }
+};
+export type ImportNotificationSummary = {
+    inserted: number;
+    invalid: number;
+    duplicates?: number;
+    emailQueued: number;
+    emailQueueFailed: number;
+    durationMs: number;
+    actor?: string;
+};
+
+/** Internal notice to the operator when a larger import runs, to watch how the email queue behaves. */
+export const sendImportNotificationEmail = async (
+    sourceMail: string,
+    to: string,
+    summary: ImportNotificationSummary
+) => {
+    try {
+        const transporter = getZeptoTransporter();
+        const rows: Array<[string, string | number]> = [
+            ["Zeitpunkt", new Date().toISOString()],
+            ["Angelegt von", summary.actor ?? "-"],
+            ["Neue Mitglieder", summary.inserted],
+            ["Ungültige Zeilen", summary.invalid],
+            ["Duplikate", summary.duplicates ?? 0],
+            ["Mails in Queue", summary.emailQueued],
+            ["Mails nicht eingereiht", summary.emailQueueFailed],
+            ["Dauer Import-Lambda", `${summary.durationMs} ms`],
+        ];
+
+        const info = await transporter.sendMail({
+            from: sourceMail,
+            to,
+            subject: `15 Palle Import: ${summary.inserted} neue Mitglieder`,
+            html: `
+                <div style="font-family: sans-serif; padding: 20px;">
+                    <h2>Import abgeschlossen</h2>
+                    <table style="border-collapse: collapse;">
+                        ${rows.map(([label, value]) => `<tr><td style="padding: 4px 12px 4px 0;">${label}</td><td style="padding: 4px 0;"><b>${value}</b></td></tr>`).join("")}
+                    </table>
+                    <p>Die QR-Mails werden jetzt über die Queue verschickt. Der Status der Mitglieder wechselt in den nächsten Minuten von "In attesa" auf "Attivo" bzw. "Non valida".</p>
+                </div>
+            `,
+            text: rows.map(([label, value]) => `${label}: ${value}`).join("\n"),
+        });
+
+        return { success: true, data: info };
     } catch {
         return { success: false };
     }
