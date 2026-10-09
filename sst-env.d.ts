@@ -10,6 +10,14 @@ declare module "sst" {
       "type": "sst.aws.ApiGatewayV2"
       "url": string
     }
+    "EmailDeadLetterQueue": {
+      "type": "sst.aws.Queue"
+      "url": string
+    }
+    "EmailQueue": {
+      "type": "sst.aws.Queue"
+      "url": string
+    }
     "KioskRealtimeApi": {
       "managementEndpoint": string
       "type": "sst.aws.ApiGatewayWebSocket"
