@@ -36,7 +36,7 @@ import {
   bulkCreateUsers,
 } from "@/lib/api"
 import { useRealtimeCheckIns } from "@/hooks/use-realtime"
-import type { Member, CheckInEvent, GroupedCustomerCheckInsRow } from "@/lib/types"
+import type { Member, CheckInEvent, GroupedCheckInEntry, GroupedCustomerCheckInsRow } from "@/lib/types"
 import {
   Users,
   Upload,
@@ -121,6 +121,14 @@ function isLastScanWarning(warning: string | null | undefined): boolean {
     /\d+\s*minute(s)?\s+ago/.test(w) ||
     /vor\s+\d+\s*minuten/.test(w)
   )
+}
+
+const INACTIVE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
+
+/** Admin-only view: active = at least one successful check-in in the last 30 days. */
+function isRecentlyActive(history: GroupedCheckInEntry[] | undefined): boolean {
+  const latest = history?.[0]?.checkInTime
+  return !!latest && Date.now() - new Date(latest).getTime() < INACTIVE_AFTER_MS
 }
 
 function isUnauthorized(error: unknown): boolean {
@@ -234,6 +242,11 @@ export default function OwnerDashboard() {
   const [totalMembersPages, setTotalMembersPages] = useState(0)
   const [isMembersLoading, setIsMembersLoading] = useState(false)
   const membersPageSize = 20
+  type ActivityFilter = "all" | "active" | "inactive"
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all")
+  const [allFilteredMembers, setAllFilteredMembers] = useState<Member[]>([])
+  // memberId -> lifetime successful check-ins, newest first
+  const [checkInHistory, setCheckInHistory] = useState<Map<string, GroupedCheckInEntry[]>>(new Map())
 
   // --- CHECK-INS STATE ---
   const [checkInsData, setCheckInsData] = useState<CheckInEvent[]>([])
@@ -459,6 +472,13 @@ export default function OwnerDashboard() {
       playFeedbackSound("positive")
     }
 
+    // Keep lifetime history live so an inactive member who scans moves to "active" without a reload.
+    const scannedMemberId = event.member?._id
+    if (!hasWarning && scannedMemberId) {
+      const entry = { checkInTime: (resolveCheckInDate(event) ?? new Date()).toISOString(), source: "" }
+      setCheckInHistory((prev) => new Map(prev).set(scannedMemberId, [entry, ...(prev.get(scannedMemberId) ?? [])]))
+    }
+
     const filter = checkInsFilterRef.current
     const matchesCurrentFilter =
       filter === "all" || (filter === "success" && !hasWarning) || (filter === "failure" && hasWarning)
@@ -515,7 +535,19 @@ export default function OwnerDashboard() {
   const loadMembers = async () => {
     setIsMembersLoading(true)
     try {
-      const result = await getMembers(membersPage, searchQuery, statusFilter, membersPageSize.toString())
+      let result
+      if (activityFilter === "all") {
+        result = await getMembers(membersPage, searchQuery, statusFilter, membersPageSize.toString())
+      } else {
+        // Activity is filtered client-side (no DB/endpoint change), so fetch every member matching search/status.
+        result = await getMembers(1, searchQuery, statusFilter, "100")
+        const rest = await Promise.all(
+          Array.from({ length: (result.pagination?.totalPages || 1) - 1 }, (_, i) =>
+            getMembers(i + 2, searchQuery, statusFilter, "100"),
+          ),
+        )
+        setAllFilteredMembers([result, ...rest].flatMap((r) => r.data || []))
+      }
 
       setMembersData(result.data || [])
       setTotalMembers(result.pagination?.total || 0)
@@ -540,11 +572,36 @@ export default function OwnerDashboard() {
     }
   }
 
+  // Activity mode pages client-side, so page changes must not refetch.
+  const membersFetchPage = activityFilter === "all" ? membersPage : 0
   useEffect(() => {
     if (activeTab === "members") {
       loadMembers()
     }
-  }, [searchQuery, statusFilter, membersPage, activeTab])
+  }, [searchQuery, statusFilter, activityFilter, membersFetchPage, activeTab])
+
+  // shortcut: loads every successful check-in ever via the existing by-customer endpoint; add a per-member endpoint if this gets slow
+  useEffect(() => {
+    getGroupedCheckInsByCustomer(new Date(0).toISOString())
+      .then((res: { data?: GroupedCustomerCheckInsRow[] }) =>
+        setCheckInHistory(new Map((res.data || []).map((row) => [row.memberId, row.checkIns]))),
+      )
+      .catch((error) => {
+        if (isUnauthorized(error)) redirectToOwnerLogin()
+        else console.error(error)
+      })
+  }, [redirectToOwnerLogin])
+
+  const activityMembers =
+    activityFilter === "all"
+      ? null
+      : allFilteredMembers.filter((m) => isRecentlyActive(checkInHistory.get(m._id)) === (activityFilter === "active"))
+  const shownMembers = activityMembers
+    ? activityMembers.slice((membersPage - 1) * membersPageSize, membersPage * membersPageSize)
+    : membersData
+  const shownTotal = activityMembers ? activityMembers.length : totalMembers
+  const shownTotalPages = activityMembers ? Math.max(1, Math.ceil(activityMembers.length / membersPageSize)) : totalMembersPages
+  const selectedHistory = selectedMember ? checkInHistory.get(selectedMember._id) ?? [] : []
 
   // --- LOAD CHECK-INS ---
   const loadCheckIns = useCallback(async () => {
@@ -1372,6 +1429,15 @@ export default function OwnerDashboard() {
                         </select>
                       </div>
                     </div>
+                    <Tabs value={activityFilter} onValueChange={(v) => { setActivityFilter(v as ActivityFilter); setMembersPage(1) }}>
+                      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-lg border border-border/60 bg-muted/50 p-1.5 shadow-sm sm:inline-grid sm:w-auto">
+                        {(["all", "active", "inactive"] as const).map((value) => (
+                          <TabsTrigger key={value} value={value} className="h-9 rounded-md px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground data-[state=active]:border data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-sm">
+                            {t(`dashboard.members.activity.${value}`)}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
                   </div>
 
                   {/* Members Table */}
@@ -1392,8 +1458,8 @@ export default function OwnerDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {membersData.map((member) => (
-                            <TableRow key={member._id}>
+                          {shownMembers.map((member) => (
+                            <TableRow key={member._id} className="cursor-pointer" onClick={() => handleViewMember(member)}>
                               <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
                               <TableCell className="hidden sm:table-cell">{member.email}</TableCell>
                               <TableCell className="hidden md:table-cell">{new Date(member.createdAt).toLocaleDateString()}</TableCell>
@@ -1408,7 +1474,7 @@ export default function OwnerDashboard() {
                                     <Badge variant="secondary">{t("dashboard.members.statusBadges.pending")}</Badge>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex justify-end gap-2">
                                   <Button variant="ghost" size="icon" onClick={() => handleViewMember(member)} title={t("dashboard.dialogs.detailsTitle")}>
                                     <Eye className="h-4 w-4" />
@@ -1429,7 +1495,7 @@ export default function OwnerDashboard() {
                               </TableCell>
                             </TableRow>
                           ))}
-                          {membersData.length === 0 && (
+                          {shownMembers.length === 0 && (
                             <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t("dashboard.members.noMembers")}</TableCell></TableRow>
                           )}
                         </TableBody>
@@ -1438,16 +1504,16 @@ export default function OwnerDashboard() {
                   )}
 
                   {/* Pagination */}
-                  {totalMembersPages > 1 && (
+                  {shownTotalPages > 1 && (
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
-                        {t("dashboard.members.pagination", { page: membersPage, totalPages: totalMembersPages, total: totalMembers })}
+                        {t("dashboard.members.pagination", { page: membersPage, totalPages: shownTotalPages, total: shownTotal })}
                       </p>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => setMembersPage(p => Math.max(1, p - 1))} disabled={membersPage === 1}>
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setMembersPage(p => Math.min(totalMembersPages, p + 1))} disabled={membersPage === totalMembersPages}>
+                        <Button variant="outline" size="sm" onClick={() => setMembersPage(p => Math.min(shownTotalPages, p + 1))} disabled={membersPage >= shownTotalPages}>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>
@@ -2378,6 +2444,30 @@ export default function OwnerDashboard() {
                       <span className="text-muted-foreground">{t("dashboard.members.table.created")}:</span>
                       <span className="font-medium">{new Date(selectedMember.createdAt).toLocaleDateString()}</span>
                     </div>
+                  </div>
+                </Card>
+
+                <Card className="px-4 py-3">
+                  <h3 className="mb-3 text-sm font-semibold">{t("dashboard.dialogs.checkInHistory")}</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("dashboard.dialogs.totalCheckIns")}</span>
+                      <span className="font-medium">{selectedHistory.length}</span>
+                    </div>
+                    {selectedHistory.length === 0 ? (
+                      <p className="text-muted-foreground">{t("dashboard.dialogs.noCheckIns")}</p>
+                    ) : (
+                      <ul className="max-h-64 overflow-y-auto">
+                        {selectedHistory.map((ci, idx) => (
+                          <li key={ci._id ?? idx} className="flex justify-between gap-2 border-b border-border/50 py-1 last:border-0">
+                            <span>
+                              {new Date(ci.checkInTime).toLocaleString(i18n.language || undefined, { dateStyle: "short", timeStyle: "short" })}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{ci.source}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </Card>
 
