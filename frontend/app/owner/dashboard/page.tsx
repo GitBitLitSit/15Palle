@@ -1262,23 +1262,29 @@ export default function OwnerDashboard() {
             </div>
           </div>
 
+          {/* Activity (last 30 days) */}
+          <div className="mb-4 grid gap-4 sm:grid-cols-2">
+            {[
+              { title: t("dashboard.stats.recentlyActive"), value: stats.recentlyActive, border: "border-green-500/60", color: "text-green-600" },
+              { title: t("dashboard.stats.inactiveMembers"), value: Math.max(0, stats.total - stats.recentlyActive), border: "border-red-500/60", color: "text-red-600" },
+            ].map((card) => (
+              <Card key={card.title} className={`border-2 ${card.border}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-base font-semibold">{card.title}</CardTitle>
+                  <Users className={`h-5 w-5 ${card.color}`} />
+                </CardHeader>
+                <CardContent className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <div className={`text-5xl font-bold tabular-nums ${card.color}`}>{card.value}</div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("dashboard.stats.percentOfAll", { percent: stats.total ? Math.round((card.value / stats.total) * 100) : 0 })}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
           {/* Stats Cards */}
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <Card className="border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30 sm:col-span-2 lg:col-span-5">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base font-semibold">{t("dashboard.stats.recentlyActive")}</CardTitle>
-                <Users className="h-5 w-5 text-emerald-600" />
-              </CardHeader>
-              <CardContent className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <div className="text-5xl font-bold tabular-nums text-emerald-600">{stats.recentlyActive}</div>
-                <p className="text-sm text-muted-foreground">
-                  {t("dashboard.stats.recentlyActiveHint", {
-                    percent: stats.total ? Math.round((stats.recentlyActive / stats.total) * 100) : 0,
-                    inactive: Math.max(0, stats.total - stats.recentlyActive),
-                  })}
-                </p>
-              </CardContent>
-            </Card>
             <Card className="border-blue-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium">{t("dashboard.stats.totalMembers")}</CardTitle>
