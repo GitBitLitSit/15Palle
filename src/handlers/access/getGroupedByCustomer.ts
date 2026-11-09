@@ -1,4 +1,5 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { ObjectId } from "mongodb";
 import { verifyJWT } from "../../lib/jwt";
 import { connectToMongo } from "../../adapters/database";
 import { AppError } from "../../lib/appError";
@@ -52,6 +53,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         const merged = mergeQueryParams(event);
         const fromRaw = (merged.from || "").trim();
         const toRaw = (merged.to || "").trim();
+        const memberIdRaw = (merged.memberId || "").trim();
+
+        if (memberIdRaw && !ObjectId.isValid(memberIdRaw)) {
+            return errorResponse(event, 400, "INVALID_MEMBER_ID_FORMAT");
+        }
 
         if (!fromRaw) {
             return errorResponse(event, 400, "CHECKINS_PERIOD_FROM_REQUIRED");
@@ -75,7 +81,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             successMatchStage,
             {
                 $match: {
-                    memberId: { $ne: null },
+                    memberId: memberIdRaw ? new ObjectId(memberIdRaw) : { $ne: null },
                     checkInTime: { $gte: fromDate, $lte: toDate },
                 },
             },

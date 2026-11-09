@@ -123,13 +123,8 @@ function isLastScanWarning(warning: string | null | undefined): boolean {
   )
 }
 
-const INACTIVE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
-
 /** Admin-only view: active = at least one successful check-in in the last 30 days. */
-function isRecentlyActive(history: GroupedCheckInEntry[] | undefined): boolean {
-  const latest = history?.[0]?.checkInTime
-  return !!latest && Date.now() - new Date(latest).getTime() < INACTIVE_AFTER_MS
-}
+const INACTIVE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
 
 function isUnauthorized(error: unknown): boolean {
   const err = error as Error & { status?: number }
@@ -245,8 +240,9 @@ export default function OwnerDashboard() {
   type ActivityFilter = "all" | "active" | "inactive"
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all")
   const [allFilteredMembers, setAllFilteredMembers] = useState<Member[]>([])
-  // memberId -> lifetime successful check-ins, newest first
-  const [checkInHistory, setCheckInHistory] = useState<Map<string, GroupedCheckInEntry[]>>(new Map())
+  const [activeMemberIds, setActiveMemberIds] = useState<Set<string>>(new Set())
+  const [selectedHistory, setSelectedHistory] = useState<GroupedCheckInEntry[] | "loading" | "error">("loading")
+  const viewedMemberIdRef = useRef<string | null>(null)
 
   // --- CHECK-INS STATE ---
   const [checkInsData, setCheckInsData] = useState<CheckInEvent[]>([])
@@ -472,11 +468,10 @@ export default function OwnerDashboard() {
       playFeedbackSound("positive")
     }
 
-    // Keep lifetime history live so an inactive member who scans moves to "active" without a reload.
+    // An inactive member who scans moves to "active" without a reload.
     const scannedMemberId = event.member?._id
     if (!hasWarning && scannedMemberId) {
-      const entry = { checkInTime: (resolveCheckInDate(event) ?? new Date()).toISOString(), source: "" }
-      setCheckInHistory((prev) => new Map(prev).set(scannedMemberId, [entry, ...(prev.get(scannedMemberId) ?? [])]))
+      setActiveMemberIds((prev) => new Set(prev).add(scannedMemberId))
     }
 
     const filter = checkInsFilterRef.current
@@ -580,28 +575,27 @@ export default function OwnerDashboard() {
     }
   }, [searchQuery, statusFilter, activityFilter, membersFetchPage, activeTab])
 
-  // shortcut: loads every successful check-in ever via the existing by-customer endpoint; add a per-member endpoint if this gets slow
   useEffect(() => {
-    getGroupedCheckInsByCustomer(new Date(0).toISOString())
+    getGroupedCheckInsByCustomer(new Date(Date.now() - INACTIVE_AFTER_MS).toISOString())
       .then((res: { data?: GroupedCustomerCheckInsRow[] }) =>
-        setCheckInHistory(new Map((res.data || []).map((row) => [row.memberId, row.checkIns]))),
+        setActiveMemberIds(new Set((res.data || []).map((row) => row.memberId))),
       )
       .catch((error) => {
-        if (isUnauthorized(error)) redirectToOwnerLogin()
-        else console.error(error)
+        if (isUnauthorized(error)) return redirectToOwnerLogin()
+        console.error(error)
+        toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.dialogs.historyError"), variant: "destructive" })
       })
-  }, [redirectToOwnerLogin])
+  }, [redirectToOwnerLogin, t, toast])
 
   const activityMembers =
     activityFilter === "all"
       ? null
-      : allFilteredMembers.filter((m) => isRecentlyActive(checkInHistory.get(m._id)) === (activityFilter === "active"))
+      : allFilteredMembers.filter((m) => activeMemberIds.has(m._id) === (activityFilter === "active"))
   const shownMembers = activityMembers
     ? activityMembers.slice((membersPage - 1) * membersPageSize, membersPage * membersPageSize)
     : membersData
   const shownTotal = activityMembers ? activityMembers.length : totalMembers
   const shownTotalPages = activityMembers ? Math.max(1, Math.ceil(activityMembers.length / membersPageSize)) : totalMembersPages
-  const selectedHistory = selectedMember ? checkInHistory.get(selectedMember._id) ?? [] : []
 
   // --- LOAD CHECK-INS ---
   const loadCheckIns = useCallback(async () => {
@@ -1206,7 +1200,22 @@ export default function OwnerDashboard() {
     }
   }
 
-  const handleViewMember = (member: Member) => { setSelectedMember(member); setDetailsDrawerOpen(true) }
+  const handleViewMember = (member: Member) => {
+    setSelectedMember(member)
+    setDetailsDrawerOpen(true)
+    setSelectedHistory("loading")
+    viewedMemberIdRef.current = member._id
+    getGroupedCheckInsByCustomer(new Date(0).toISOString(), undefined, member._id)
+      .then((res: { data?: GroupedCustomerCheckInsRow[] }) => {
+        if (viewedMemberIdRef.current !== member._id) return
+        setSelectedHistory(res.data?.find((row) => row.memberId === member._id)?.checkIns ?? [])
+      })
+      .catch((error) => {
+        if (isUnauthorized(error)) return redirectToOwnerLogin()
+        console.error(error)
+        if (viewedMemberIdRef.current === member._id) setSelectedHistory("error")
+      })
+  }
   
   const handlePrintQR = (member: Member) => {
     const printWindow = window.open("", "_blank")
@@ -2450,6 +2459,12 @@ export default function OwnerDashboard() {
                 <Card className="px-4 py-3">
                   <h3 className="mb-3 text-sm font-semibold">{t("dashboard.dialogs.checkInHistory")}</h3>
                   <div className="space-y-2 text-sm">
+                    {selectedHistory === "loading" ? (
+                      <div className="flex justify-center py-2"><Spinner /></div>
+                    ) : selectedHistory === "error" ? (
+                      <p className="text-destructive">{t("dashboard.dialogs.historyError")}</p>
+                    ) : (
+                    <>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{t("dashboard.dialogs.totalCheckIns")}</span>
                       <span className="font-medium">{selectedHistory.length}</span>
@@ -2467,6 +2482,8 @@ export default function OwnerDashboard() {
                           </li>
                         ))}
                       </ul>
+                    )}
+                    </>
                     )}
                   </div>
                 </Card>

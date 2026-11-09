@@ -46,6 +46,26 @@ describe("GET /auth/check-ins/by-customer", () => {
         expect(body.error).toBe("CHECKINS_PERIOD_FROM_REQUIRED");
     });
 
+    it("filters by memberId and rejects invalid ids", async () => {
+        const token = generateJWT("admin");
+        const headers = { authorization: `Bearer ${token}` };
+        const memberId = new ObjectId();
+
+        const ok = await handler(createApiEvent({
+            method: "GET", path: "/auth/check-ins/by-customer", headers,
+            queryStringParameters: { from: "1970-01-01T00:00:00.000Z", memberId: memberId.toHexString() },
+        }), {} as any, () => {});
+        expect(ok?.statusCode).toBe(200);
+        const pipeline = aggregateMock.mock.calls[0][0] as any[];
+        expect(pipeline[1].$match.memberId).toEqual(memberId);
+
+        const bad = await handler(createApiEvent({
+            method: "GET", path: "/auth/check-ins/by-customer", headers,
+            queryStringParameters: { from: "1970-01-01T00:00:00.000Z", memberId: "nope" },
+        }), {} as any, () => {});
+        expect(bad?.statusCode).toBe(400);
+    });
+
     it("returns 200 with serialized rows", async () => {
         const memberId = new ObjectId();
         const checkInId = new ObjectId();
