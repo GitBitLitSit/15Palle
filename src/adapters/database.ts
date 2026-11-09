@@ -45,5 +45,17 @@ async function initializeDatabase(database: Db) {
         { checkinTime: -1 },
         { name: "index_time_sort" }
     );
+
+    // Per-member history / cooldown lookups, sorted newest first.
+    await checkins.createIndex(
+        { memberId: 1, checkInTime: -1 },
+        { name: "index_member_time" }
+    );
+
+    // Time-range queries (activity filter, period report). The index above on "checkinTime" has a typo and is never used.
+    await checkins.createIndex(
+        { checkInTime: -1 },
+        { name: "index_checkin_time" }
+    );
 }
 

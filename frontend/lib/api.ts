@@ -116,18 +116,21 @@ export async function deleteMember(memberId: string) {
 }
 
 export type MemberStatusFilter = "all" | "active" | "blocked" | "pending" | "invalid"
+export type MemberActivityFilter = "all" | "active" | "inactive"
 
 export async function getMembers(
   page = 1,
   search = "",
   status: MemberStatusFilter = "all",
-  limit = "20"
+  limit = "20",
+  activity: MemberActivityFilter = "all",
 ) {
   const params = new URLSearchParams({
     page: page.toString(),
     limit,
     status,
     ...(search && { search }),
+    ...(activity !== "all" && { activity }),
   })
 
   const res = await fetch(`${API_URL}/members?${params}`, {

@@ -85,22 +85,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     checkInTime: { $gte: fromDate, $lte: toDate },
                 },
             },
-            {
-                $lookup: {
-                    from: "members",
-                    localField: "memberId",
-                    foreignField: "_id",
-                    as: "memberData",
-                },
-            },
-            { $match: { memberData: { $ne: [] } } },
-            { $set: { member: { $arrayElemAt: ["$memberData", 0] } } },
-            { $unset: ["memberData"] },
             { $sort: { checkInTime: -1 } },
             {
                 $group: {
                     _id: "$memberId",
-                    member: { $first: "$member" },
                     checkIns: {
                         $push: {
                             checkInTime: "$checkInTime",
@@ -110,6 +98,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     },
                 },
             },
+            {
+                $lookup: {
+                    from: "members",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "memberData",
+                },
+            },
+            { $match: { memberData: { $ne: [] } } },
+            { $set: { member: { $arrayElemAt: ["$memberData", 0] } } },
+            { $unset: ["memberData"] },
             {
                 $set: {
                     latestCheckInTime: {

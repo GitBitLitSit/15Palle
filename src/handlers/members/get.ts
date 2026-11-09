@@ -5,6 +5,8 @@ import { Member } from "../../lib/types";
 import { AppError } from "../../lib/appError";
 import { errorResponse } from "../../lib/http";
 
+const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const token = event.headers.authorization?.split(" ")[1];
 
@@ -25,6 +27,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
         const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(queryParams.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
         const statusFilter = (queryParams.status || "all").toLowerCase();
+        const activityFilter = (queryParams.activity || "all").toLowerCase();
 
         const db = await connectToMongo();
         const collection = db.collection<Member>("members");
@@ -70,6 +73,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             dbQuery = { ...dbQuery, $and: [notBlocked, notInvalid, { emailValid: false }] };
         } else if (statusFilter === "invalid") {
             dbQuery.emailInvalid = true;
+        }
+
+        // Activity: active = at least one successful check-in in the last 30 days.
+        if (activityFilter === "active" || activityFilter === "inactive") {
+            const since = new Date(Date.now() - ACTIVE_WINDOW_MS);
+            const activeIds = await db.collection("checkins").distinct("memberId", {
+                checkInTime: { $gte: since },
+                warning: { $in: [null, ""] },
+                warningCode: { $in: [null, ""] },
+            });
+            dbQuery._id = activityFilter === "active" ? { $in: activeIds } : { $nin: activeIds };
         }
 
         const skip = (page - 1) * limit;

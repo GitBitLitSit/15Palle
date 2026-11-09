@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import {
   getMembers,
   type MemberStatusFilter,
+  type MemberActivityFilter,
   createMember,
   resetQrCode,
   getCheckIns,
@@ -122,9 +123,6 @@ function isLastScanWarning(warning: string | null | undefined): boolean {
     /vor\s+\d+\s*minuten/.test(w)
   )
 }
-
-/** Admin-only view: active = at least one successful check-in in the last 30 days. */
-const INACTIVE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
 
 function isUnauthorized(error: unknown): boolean {
   const err = error as Error & { status?: number }
@@ -237,10 +235,9 @@ export default function OwnerDashboard() {
   const [totalMembersPages, setTotalMembersPages] = useState(0)
   const [isMembersLoading, setIsMembersLoading] = useState(false)
   const membersPageSize = 20
-  type ActivityFilter = "all" | "active" | "inactive"
-  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all")
-  const [allFilteredMembers, setAllFilteredMembers] = useState<Member[]>([])
-  const [activeMemberIds, setActiveMemberIds] = useState<Set<string>>(new Set())
+  const [activityFilter, setActivityFilter] = useState<MemberActivityFilter>("all")
+  const activityFilterRef = useRef(activityFilter)
+  useEffect(() => { activityFilterRef.current = activityFilter }, [activityFilter])
   const [selectedHistory, setSelectedHistory] = useState<GroupedCheckInEntry[] | "loading" | "error">("loading")
   const viewedMemberIdRef = useRef<string | null>(null)
 
@@ -468,10 +465,10 @@ export default function OwnerDashboard() {
       playFeedbackSound("positive")
     }
 
-    // An inactive member who scans moves to "active" without a reload.
+    // An inactive member who scans leaves the Inactive list right away (the server lists them as active from now on).
     const scannedMemberId = event.member?._id
-    if (!hasWarning && scannedMemberId) {
-      setActiveMemberIds((prev) => new Set(prev).add(scannedMemberId))
+    if (!hasWarning && scannedMemberId && activityFilterRef.current === "inactive") {
+      setMembersData((prev) => prev.filter((m) => m._id !== scannedMemberId))
     }
 
     const filter = checkInsFilterRef.current
@@ -530,19 +527,7 @@ export default function OwnerDashboard() {
   const loadMembers = async () => {
     setIsMembersLoading(true)
     try {
-      let result
-      if (activityFilter === "all") {
-        result = await getMembers(membersPage, searchQuery, statusFilter, membersPageSize.toString())
-      } else {
-        // Activity is filtered client-side (no DB/endpoint change), so fetch every member matching search/status.
-        result = await getMembers(1, searchQuery, statusFilter, "100")
-        const rest = await Promise.all(
-          Array.from({ length: (result.pagination?.totalPages || 1) - 1 }, (_, i) =>
-            getMembers(i + 2, searchQuery, statusFilter, "100"),
-          ),
-        )
-        setAllFilteredMembers([result, ...rest].flatMap((r) => r.data || []))
-      }
+      const result = await getMembers(membersPage, searchQuery, statusFilter, membersPageSize.toString(), activityFilter)
 
       setMembersData(result.data || [])
       setTotalMembers(result.pagination?.total || 0)
@@ -567,35 +552,11 @@ export default function OwnerDashboard() {
     }
   }
 
-  // Activity mode pages client-side, so page changes must not refetch.
-  const membersFetchPage = activityFilter === "all" ? membersPage : 0
   useEffect(() => {
     if (activeTab === "members") {
       loadMembers()
     }
-  }, [searchQuery, statusFilter, activityFilter, membersFetchPage, activeTab])
-
-  useEffect(() => {
-    getGroupedCheckInsByCustomer(new Date(Date.now() - INACTIVE_AFTER_MS).toISOString())
-      .then((res: { data?: GroupedCustomerCheckInsRow[] }) =>
-        setActiveMemberIds(new Set((res.data || []).map((row) => row.memberId))),
-      )
-      .catch((error) => {
-        if (isUnauthorized(error)) return redirectToOwnerLogin()
-        console.error(error)
-        toast({ title: t("dashboard.toasts.errorTitle"), description: t("dashboard.dialogs.historyError"), variant: "destructive" })
-      })
-  }, [redirectToOwnerLogin, t, toast])
-
-  const activityMembers =
-    activityFilter === "all"
-      ? null
-      : allFilteredMembers.filter((m) => activeMemberIds.has(m._id) === (activityFilter === "active"))
-  const shownMembers = activityMembers
-    ? activityMembers.slice((membersPage - 1) * membersPageSize, membersPage * membersPageSize)
-    : membersData
-  const shownTotal = activityMembers ? activityMembers.length : totalMembers
-  const shownTotalPages = activityMembers ? Math.max(1, Math.ceil(activityMembers.length / membersPageSize)) : totalMembersPages
+  }, [searchQuery, statusFilter, activityFilter, membersPage, activeTab])
 
   // --- LOAD CHECK-INS ---
   const loadCheckIns = useCallback(async () => {
@@ -1438,7 +1399,7 @@ export default function OwnerDashboard() {
                         </select>
                       </div>
                     </div>
-                    <Tabs value={activityFilter} onValueChange={(v) => { setActivityFilter(v as ActivityFilter); setMembersPage(1) }}>
+                    <Tabs value={activityFilter} onValueChange={(v) => { setActivityFilter(v as MemberActivityFilter); setMembersPage(1) }}>
                       <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-lg border border-border/60 bg-muted/50 p-1.5 shadow-sm sm:inline-grid sm:w-auto">
                         {(["all", "active", "inactive"] as const).map((value) => (
                           <TabsTrigger key={value} value={value} className="h-9 rounded-md px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground data-[state=active]:border data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-sm">
@@ -1467,7 +1428,7 @@ export default function OwnerDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {shownMembers.map((member) => (
+                          {membersData.map((member) => (
                             <TableRow key={member._id} className="cursor-pointer" onClick={() => handleViewMember(member)}>
                               <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
                               <TableCell className="hidden sm:table-cell">{member.email}</TableCell>
@@ -1504,7 +1465,7 @@ export default function OwnerDashboard() {
                               </TableCell>
                             </TableRow>
                           ))}
-                          {shownMembers.length === 0 && (
+                          {membersData.length === 0 && (
                             <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t("dashboard.members.noMembers")}</TableCell></TableRow>
                           )}
                         </TableBody>
@@ -1513,16 +1474,16 @@ export default function OwnerDashboard() {
                   )}
 
                   {/* Pagination */}
-                  {shownTotalPages > 1 && (
+                  {totalMembersPages > 1 && (
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
-                        {t("dashboard.members.pagination", { page: membersPage, totalPages: shownTotalPages, total: shownTotal })}
+                        {t("dashboard.members.pagination", { page: membersPage, totalPages: totalMembersPages, total: totalMembers })}
                       </p>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => setMembersPage(p => Math.max(1, p - 1))} disabled={membersPage === 1}>
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setMembersPage(p => Math.min(shownTotalPages, p + 1))} disabled={membersPage >= shownTotalPages}>
+                        <Button variant="outline" size="sm" onClick={() => setMembersPage(p => Math.min(totalMembersPages, p + 1))} disabled={membersPage >= totalMembersPages}>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>
