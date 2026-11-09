@@ -236,8 +236,7 @@ export default function OwnerDashboard() {
   const [isMembersLoading, setIsMembersLoading] = useState(false)
   const membersPageSize = 20
   const [activityFilter, setActivityFilter] = useState<MemberActivityFilter>("all")
-  const activityFilterRef = useRef(activityFilter)
-  useEffect(() => { activityFilterRef.current = activityFilter }, [activityFilter])
+  const reloadMembersSilentlyRef = useRef<() => void>(() => {})
   const [selectedHistory, setSelectedHistory] = useState<GroupedCheckInEntry[] | "loading" | "error">("loading")
   const viewedMemberIdRef = useRef<string | null>(null)
 
@@ -428,7 +427,7 @@ export default function OwnerDashboard() {
   const [memberToReset, setMemberToReset] = useState<Member | null>(null)
   const [isResettingQr, setIsResettingQr] = useState(false)
 
-  const [stats, setStats] = useState({ total: 0, blocked: 0, active: 0, pending: 0, invalid: 0 })
+  const [stats, setStats] = useState({ total: 0, blocked: 0, active: 0, pending: 0, invalid: 0, recentlyActive: 0 })
   const LEGACY_IMPORT_STORAGE_KEY = "importPreviewState"
 
   // --- CLEANUP EFFECT ---
@@ -465,11 +464,8 @@ export default function OwnerDashboard() {
       playFeedbackSound("positive")
     }
 
-    // An inactive member who scans leaves the Inactive list right away (the server lists them as active from now on).
-    const scannedMemberId = event.member?._id
-    if (!hasWarning && scannedMemberId && activityFilterRef.current === "inactive") {
-      setMembersData((prev) => prev.filter((m) => m._id !== scannedMemberId))
-    }
+    // A successful scan can turn an inactive member active: refresh the active count and the Active/Inactive lists.
+    if (!hasWarning && event.member?._id) reloadMembersSilentlyRef.current()
 
     const filter = checkInsFilterRef.current
     const matchesCurrentFilter =
@@ -524,8 +520,8 @@ export default function OwnerDashboard() {
   const { isConnected, error: wsError } = useRealtimeCheckIns(handleNewCheckIn)
 
   // --- LOAD MEMBERS ---
-  const loadMembers = async () => {
-    setIsMembersLoading(true)
+  const loadMembers = async (silent = false) => {
+    if (!silent) setIsMembersLoading(true)
     try {
       const result = await getMembers(membersPage, searchQuery, statusFilter, membersPageSize.toString(), activityFilter)
 
@@ -538,6 +534,7 @@ export default function OwnerDashboard() {
           blocked: result.stats?.blocked ?? 0,
           pending: result.stats?.pending ?? 0,
           invalid: result.stats?.invalid ?? 0,
+          recentlyActive: result.stats?.recentlyActive ?? 0,
       })
 
     } catch (error) {
@@ -557,6 +554,9 @@ export default function OwnerDashboard() {
       loadMembers()
     }
   }, [searchQuery, statusFilter, activityFilter, membersPage, activeTab])
+
+  // Lets the websocket handler refresh list + stats with the current filters, without a loading flicker.
+  useEffect(() => { reloadMembersSilentlyRef.current = () => void loadMembers(true) })
 
   // --- LOAD CHECK-INS ---
   const loadCheckIns = useCallback(async () => {
@@ -1264,6 +1264,21 @@ export default function OwnerDashboard() {
 
           {/* Stats Cards */}
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <Card className="border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30 sm:col-span-2 lg:col-span-5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base font-semibold">{t("dashboard.stats.recentlyActive")}</CardTitle>
+                <Users className="h-5 w-5 text-emerald-600" />
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <div className="text-5xl font-bold tabular-nums text-emerald-600">{stats.recentlyActive}</div>
+                <p className="text-sm text-muted-foreground">
+                  {t("dashboard.stats.recentlyActiveHint", {
+                    percent: stats.total ? Math.round((stats.recentlyActive / stats.total) * 100) : 0,
+                    inactive: Math.max(0, stats.total - stats.recentlyActive),
+                  })}
+                </p>
+              </CardContent>
+            </Card>
             <Card className="border-blue-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium">{t("dashboard.stats.totalMembers")}</CardTitle>

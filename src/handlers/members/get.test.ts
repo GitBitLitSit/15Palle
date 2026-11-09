@@ -12,6 +12,7 @@ const { handler } = await import("./get");
 describe("GET /members", () => {
   beforeEach(() => {
     mockDb.members._data.length = 0;
+    (mockDb.checkins as any).distinct = vi.fn().mockResolvedValue([]);
   });
 
   it("returns 401 without token", async () => {
@@ -53,6 +54,7 @@ describe("GET /members", () => {
     (mockDb.checkins as any).distinct = distinct;
     const find = vi.spyOn(mockDb.members, "find");
     const token = generateJWT("admin");
+    let lastBody: any;
     for (const activity of ["active", "inactive"]) {
       const res = await handler(createApiEvent({
         method: "GET",
@@ -61,12 +63,14 @@ describe("GET /members", () => {
         queryStringParameters: { activity },
       }), {} as any, () => {});
       expect(res?.statusCode).toBe(200);
+      lastBody = parseBody(res);
     }
     const idFilters = find.mock.calls.map((c) => c[0]?._id);
     expect(idFilters).toContainEqual({ $in: [activeId] });
     expect(idFilters).toContainEqual({ $nin: [activeId] });
     const since: Date = distinct.mock.calls[0][1].checkInTime.$gte;
     expect(Date.now() - since.getTime()).toBeCloseTo(30 * 24 * 60 * 60 * 1000, -4);
+    expect(typeof lastBody.stats.recentlyActive).toBe("number");
     find.mockRestore();
   });
 

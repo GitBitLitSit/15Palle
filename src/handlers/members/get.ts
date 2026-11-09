@@ -75,14 +75,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             dbQuery.emailInvalid = true;
         }
 
-        // Activity: active = at least one successful check-in in the last 30 days.
+        // Recently active = at least one successful check-in in the last 30 days (uses the checkInTime index).
+        const activeIds = await db.collection("checkins").distinct("memberId", {
+            checkInTime: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS) },
+            warning: { $in: [null, ""] },
+            warningCode: { $in: [null, ""] },
+        });
         if (activityFilter === "active" || activityFilter === "inactive") {
-            const since = new Date(Date.now() - ACTIVE_WINDOW_MS);
-            const activeIds = await db.collection("checkins").distinct("memberId", {
-                checkInTime: { $gte: since },
-                warning: { $in: [null, ""] },
-                warningCode: { $in: [null, ""] },
-            });
             dbQuery._id = activityFilter === "active" ? { $in: activeIds } : { $nin: activeIds };
         }
 
@@ -91,7 +90,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         // Global stats (unfiltered by status/search)
         const activeQuery = { $and: [notBlocked, notInvalid, { emailValid: true }] };
         const pendingQuery = { $and: [notBlocked, notInvalid, { emailValid: false }] };
-        const [members, total, totalActive, totalBlocked, totalPending, totalInvalid] = await Promise.all([
+        const [members, total, totalActive, totalBlocked, totalPending, totalInvalid, totalRecentlyActive] = await Promise.all([
             collection.find(dbQuery)
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -102,6 +101,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             collection.countDocuments({ blocked: true }),
             collection.countDocuments(pendingQuery),
             collection.countDocuments({ emailInvalid: true }),
+            // Counted against members so check-ins of deleted members are ignored.
+            collection.countDocuments({ _id: { $in: activeIds } } as any),
         ]);
 
         return {
@@ -121,6 +122,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
                     blocked: totalBlocked,
                     pending: totalPending,
                     invalid: totalInvalid,
+                    recentlyActive: totalRecentlyActive,
                 },
             }),
         };
